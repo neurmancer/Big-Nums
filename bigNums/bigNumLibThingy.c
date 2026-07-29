@@ -16,8 +16,10 @@
 #include <stdio.h>
 #include "complexFFT.h"
 #include "bignums.h"
+#ifndef MAX_LIMBS
+    #define MAX_LIMBS 128 // 128 * 32bits (int standard) = 4096 bits...hope that's gonna be enough
+#endif
 
-#define MAX_LIMBS 64 // 64 * 32bits (int standard) = 2048 bits...hope that's gonna be enough
 #ifndef INT_MAX
     #define INT_MAX (~0u>>1)
 #endif
@@ -72,7 +74,7 @@ void printBigInt(const BigInt *a)
     BigInt tmp = *a;
 
     // Max decimal digits: 2048 bits ≈ 617 digits + '\0'
-    char digits[620];
+    char digits[1240];
     int pos = sizeof(digits) - 1;
     digits[pos] = '\0';
 
@@ -129,6 +131,28 @@ int bigIntMulUInt_32(BigInt *a, uint32_t b) {
 
 // a = a / divisor; return remainder
 
+
+/**
+ * Compute n! for 0 ≤ n ≤ ... (capacity limited by MAX_LIMBS).
+ * result = n! (n factorial).
+ * Returns 0 on success, INT_MAX if overflow (result > 2^4096).
+ */
+int bigIntFactorial(BigInt *result, uint32_t n) {
+    // 0! = 1! = 1
+    if (n <= 1) {
+        int_32ToBigInt(result, 1);
+        return(0);
+    }
+
+    int_32ToBigInt(result, 1);
+    for (uint32_t i = 2; i <= n; i++) {
+        int rc = bigIntMulUInt_32(result, i);
+        if (rc != 0) {                     // overflow
+            return(INT_MAX);
+        }
+    }
+    return(0);
+}
 
 int bigIntFromString(BigInt *a, const char *dec_str) {
     bigIntZero(a);

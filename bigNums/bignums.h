@@ -3,7 +3,7 @@
 
 #include <stdint.h>       // for uint32_t, uint64_t
 
-#define MAX_LIMBS 64
+#define MAX_LIMBS 128
 
 typedef struct {
     uint32_t limbs[MAX_LIMBS];
@@ -43,6 +43,8 @@ int bigIntSub(BigInt *result, const BigInt *a, const BigInt *b);
 int bigIntShiftLeft(BigInt *a, int bits);
 
 int bigIntShiftRight(BigInt *a, int bits);
+
+int bigIntFactorial(BigInt *result, uint32_t n);
 
 //Float operations
 
