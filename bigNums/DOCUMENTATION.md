@@ -5,7 +5,7 @@
 >
 > A C library for arbitrary-precision integers and floats. 
 > Little-endian limb storage, FFT-based multiplication, Newton-Raphson division/sqrt. 
-> Capped at 2048 bits (MAX_LIMBS = 64 × 32-bit limbs). Built as a side-quest for Tupper's self-referential formula and Ramanujan fuckery.
+> Capped at 4096 bits (MAX_LIMBS = 128 × 32-bit limbs). Built as a side-quest for Tupper's self-referential formula and Ramanujan fuckery.
 
 
 ## ToC
@@ -92,6 +92,9 @@ stores the product in result. Returns 0 on success, INT_MAX if the result would 
 
 - bigIntSub(result, a, b): Subtracts b from a, stores in result. Requires a >= b, returns -1 if b is larger. 
 Safe when result aliases a (in-place subtraction), **NOT** safe when result aliases b
+
+- bigIntFactorial(result, uint32_t n), 
+Freshly added one for factorial using bigIntMulUInt_32 for multiplication under the hood same restraints...
 
 **Comparison and Bit Operations:**
 
