@@ -2,6 +2,8 @@
 
 - A basic arbitrary precision library written in C
 
+> This project is under construction and does not offer stability yet
+> **TESTING ERA IS NOT DONE YET**
 
 ## What is This? 
 

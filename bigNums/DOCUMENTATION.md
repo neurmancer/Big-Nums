@@ -8,6 +8,9 @@
 > Capped at 4096 bits (MAX_LIMBS = 128 × 32-bit limbs). Built as a side-quest for Tupper's self-referential formula and Ramanujan fuckery.
 
 
+> This project is under construction and does not offer stability yet
+> **TESTING ERA IS NOT DONE YET**
+
 ## ToC
 
 - [How To Use](#how-to-use)
