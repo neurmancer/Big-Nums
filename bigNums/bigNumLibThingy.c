@@ -287,7 +287,7 @@ int bigIntMulFFT(BigInt *result, const BigInt *a, const BigInt *b) {
         temp[i] = (uint64_t)(v + 0.5);
     }
 
-    /* 8. Carry propagation base 2^16 (one forward pass is enough) */
+    /* 8. Carry propagation base 2^16 */
     for (int i = 0; i < convLen + 1; i++) {
         if (temp[i] >= 0x10000ULL) {
             temp[i + 1] += temp[i] >> 16;
@@ -424,7 +424,6 @@ int bigIntShiftLeft(BigInt *a, int bits) {
         a->size += limb_shift;
     }
 
-    // Trim any trailing zero? Not needed.
     while (a->size > 1 && a->limbs[a->size-1] == 0)
         a->size--;
     return(0);
@@ -500,13 +499,11 @@ void bigFloatTruncate(BigFloat *x, int target_limbs) {
         int limbs_to_chop = x->mantissa.size - target_limbs;
         
         // Shift the mantissa right by exactly 'limbs_to_chop' whole limbs (32 bits each)
-        // This physically deletes the un-converged noise at the bottom of the number!
         bigIntShiftRight(&x->mantissa, limbs_to_chop * 32);
         
         // Compensate the exponent because we effectively divided the mantissa integer by 2^(32 * chop)
         x->exp += (limbs_to_chop * 32);
         
-        // Clean up any remaining leading zeros just in case
         bigFloatNormalize(x);
     }
 }
@@ -683,7 +680,6 @@ int bigFloatMul(BigFloat *result, const BigFloat *a, const BigFloat *b) {
     result->sign = a->sign * b->sign;
     return(bigFloatNormalize(result));
 }
-//Make it work first...then format as you please 
 
 /* ---------- BigFloat addition ---------- */
 int bigFloatAdd(BigFloat *result, const BigFloat *a, const BigFloat *b) {
@@ -776,7 +772,6 @@ int bigFloatReciprocal(BigFloat *result, const BigFloat *x, int target_limbs)
     BigFloat y;
     bigFloatZero(&y);
 
-    // --- NEW BULLETPROOF BITWISE SEED BITCH ---
     // Mathematically guarantees 1 <= x * y < 2
     uint32_t high = x->mantissa.limbs[x->mantissa.size - 1];
     int total_bits = 32 * (x->mantissa.size - 1) + (32 - clz32(high));
@@ -799,7 +794,7 @@ int bigFloatReciprocal(BigFloat *result, const BigFloat *x, int target_limbs)
 
     int required_iters = 6; 
     int temp = 1;
-    while (temp < working_limbs) { // <- Use working_limbs here!
+    while (temp < working_limbs) {
         required_iters++;
         temp *= 2;
     }
@@ -848,7 +843,6 @@ int bigFloatSqrt(BigFloat *result, const BigFloat *x, int target_limbs)
     BigFloat y;
     bigFloatZero(&y);
 
-    // --- NEW BULLETPROOF BITWISE SEED ---
     uint32_t high = x->mantissa.limbs[x->mantissa.size - 1];
     int total_bits = 32 * (x->mantissa.size - 1) + (32 - clz32(high));
     
@@ -857,14 +851,13 @@ int bigFloatSqrt(BigFloat *result, const BigFloat *x, int target_limbs)
 
     y.mantissa.limbs[0] = 1;
     y.mantissa.size = 1;
-    // Floor division for negative odd numbers requires a tiny tweak
+
     y.exp = (true_exp >= 0) ? (true_exp / 2) : ((true_exp - 1) / 2);
     y.sign = 1;
 
 // ---------- Newton: y = (y + x/y) / 2 ----------
 BigFloat t1, t2;
-    
-    // WE ADD 2 GUARD LIMBS TO PUSH THE NOISE DOWN!
+
     int working_limbs = target_limbs + 2;
     if (working_limbs > MAX_LIMBS) working_limbs = MAX_LIMBS;
 
@@ -872,11 +865,11 @@ BigFloat t1, t2;
     int temp = 1;
     while (temp < working_limbs) {
         required_iters++;
-        temp *= 2;
+        temp = temp << 1;
     }
 
     for (int i = 0; i < required_iters; i++) {
-        // Pass MAX_LIMBS to division so intermediate steps don't truncate early!
+
         if (bigFloatDiv(&t1, x, &y, MAX_LIMBS) != 0) return(-1);
         if (bigFloatAdd(&t2, &y, &t1) != 0) return(-1);
 
