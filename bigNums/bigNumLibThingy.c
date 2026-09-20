@@ -87,14 +87,12 @@ void printBigInt(const BigInt *a)
 
 int bigIntAddUInt_32(BigInt *a, uint32_t b) {
     uint64_t carry = b;
-    for (int i = 0; carry > 0 && i < MAX_LIMBS; i++) {
+    for (int i = 0; carry > 0 && i < a->size; i++) {
         carry += a->limbs[i];
         a->limbs[i] = (uint32_t)carry;
         carry >>= 32;
     }
-    // update size (largest index with non-zero limb)
-    while (a->size > 1 && a->limbs[a->size-1] == 0)
-        a->size--;
+    // Append the carry without reading inactive (possibly stale) limbs.
     if (carry) {
         if (a->size < MAX_LIMBS) {
             a->limbs[a->size] = (uint32_t)carry;
@@ -110,6 +108,10 @@ int bigIntAddUInt_32(BigInt *a, uint32_t b) {
 
 // a *= b, b is a 32-bit integer
 int bigIntMulUInt_32(BigInt *a, uint32_t b) {
+    if (b == 0) {
+        bigIntZero(a);
+        return 0;
+    }
     uint64_t carry = 0;
     for (int i = 0; i < a->size; i++) {
         carry += (uint64_t)a->limbs[i] * b;
@@ -636,18 +638,28 @@ int bigFloatShiftRight(BigFloat *x, int bits) {
 
 /* Compare absolute values (ignore sign). */
 int bigFloatCmpAbs(const BigFloat *a, const BigFloat *b) {
-    int a_zero = (a->mantissa.size == 1 && a->mantissa.limbs[0] == 0);
-    int b_zero = (b->mantissa.size == 1 && b->mantissa.limbs[0] == 0);
-    
-    if (a_zero && b_zero){ return(0); }
-    
-    if (a_zero){ return(-1); }
-    
-    if (b_zero){ return(-1); }
+    int a_size = a->mantissa.size;
+    int b_size = b->mantissa.size;
+    while (a_size > 1 && a->mantissa.limbs[a_size - 1] == 0) --a_size;
+    while (b_size > 1 && b->mantissa.limbs[b_size - 1] == 0) --b_size;
+    int a_bits = 32 * a_size - clz32(a->mantissa.limbs[a_size - 1]);
+    int b_bits = 32 * b_size - clz32(b->mantissa.limbs[b_size - 1]);
+    if (a_bits == 0 || b_bits == 0)
+        return (a_bits > 0) - (b_bits > 0);
 
-    if (a->exp != b->exp) { return((a->exp > b->exp) ? 1 : -1); }
-    
-    return(bigIntCmp(&a->mantissa, &b->mantissa));
+    // Compare the positions of the highest set bits, using a wide exponent.
+    int64_t a_top = (int64_t)a->exp + a_bits;
+    int64_t b_top = (int64_t)b->exp + b_bits;
+    if (a_top != b_top) return a_top > b_top ? 1 : -1;
+
+    // Align at the highest bit without shifting/truncating either mantissa.
+    // Missing low bits are zero, so equivalent representations compare equal.
+    for (int ai = a_bits - 1, bi = b_bits - 1; ai >= 0 || bi >= 0; --ai, --bi) {
+        int av = ai >= 0 ? bigIntGetBit(&a->mantissa, ai) : 0;
+        int bv = bi >= 0 ? bigIntGetBit(&b->mantissa, bi) : 0;
+        if (av != bv) return av > bv ? 1 : -1;
+    }
+    return 0;
 }
 
 void bigFloatCopy(BigFloat *dst, const BigFloat *src) {

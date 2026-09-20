@@ -1,15 +1,25 @@
 # Big-Nums
 
-- A basic arbitrary precision library written in C
+An experimental C library for unsigned big integers and signed binary floats,
+with FFT multiplication and Newton reciprocal/square-root routines. Numbers use
+fixed storage: 128 32-bit limbs (4096 integer or mantissa bits).
 
-> This project is under construction and does not offer stability yet
-> **TESTING ERA IS NOT DONE YET**
+Build and run from the repository root:
 
-## What is This? 
+```sh
+make -C bigNums MAIN=demo.c TARGET=demo
+./bigNums/demo
+make -C bigNums MAIN=test.c TARGET=test_big
+./bigNums/test_big
+```
 
-- A basic big num lib built as a side quest for another projects and grown better than expected so it has its own repo now
+Requires a C99-or-later compiler, Make, and the math library (`-lm`).
+The numerical test suite checks arithmetic results and exits nonzero on failure.
+Precision and decimal formatting still have limitations; this library remains
+under construction.
 
-- All the related information documented in [DOCUMENT](bigNums/DOCUMENTATION.md)
+See the [API documentation and known limitations](bigNums/DOCUMENTATION.md),
+[usage demo](bigNums/demo.c), and [numerical tests](bigNums/test.c).
 
-- [The origin of the lib](https://github.com/neurmancer/Basic-C-Examples/tree/main/reallyBasicThings/projects101/mathFuckery/DSPFuckery/bigNums)
-
+Originally a side project for other math experiments:
+[the library's origin](https://github.com/neurmancer/Basic-C-Examples/tree/main/reallyBasicThings/projects101/mathFuckery/DSPFuckery/bigNums).

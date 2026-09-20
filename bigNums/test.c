@@ -1,253 +1,257 @@
+/* Numerical regression tests. Failures are reported, never hidden by NDEBUG. */
+#include <limits.h>
+#include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "bignums.h"
 
-/*
-        Sup? this is a test clause for my fresh big num lib and it seemed like it fucking passed the TEST...
-        This subfolder won't have commentary more than it needs to since...it was a hell even for the creator(me lulz)
-        
-        So what I've done so far:
-            Implemented:
-                0- bignum zero init
-                1- bignum+int
-                2- bignum * int
-                3- int to bignum
-                4- string to bignum
-                5- bignum mod and division
-                6- bignum get bit
-                7- bignum mul with FFT 
+static unsigned checks, failures;
+#define CHECK(expr) do { \
+    ++checks; \
+    if (!(expr)) { \
+        ++failures; \
+        fprintf(stderr, "FAIL line %d: %s\n", __LINE__, #expr); \
+    } \
+} while (0)
 
-            Then the next day I came back like a maniac and added:
-                8-  BigFloat zero / from uint32 / normalize / copy
-                9-  BigFloat shift left / right
-                10- BigFloat abs compare
-                11- BigFloat mul (FFT powered)
-                12- BigFloat add / sub
-                13- BigFloat reciprocal (Newton)
-                14- BigFloat div
-                15- BigFloat sqrt (Newton)
+/* Independent small-value oracle: do not use the parser or comparator to
+ * validate arithmetic, since those functions may have their own bugs. */
+static int equals_u64(const BigInt *a, uint64_t value) {
+    int size = value > UINT32_MAX ? 2 : 1;
+    return a->size == size && a->limbs[0] == (uint32_t)value &&
+           (size == 1 || a->limbs[1] == (uint32_t)(value >> 32));
+}
 
-            Now we test the whole damn zoo.
+static long double float_value(const BigFloat *x) {
+    long double value = 0;
+    for (int i = x->mantissa.size - 1; i >= 0; --i)
+        value = ldexpl(value, 32) + x->mantissa.limbs[i];
+    return x->sign * ldexpl(value, x->exp);
+}
 
+static int near(const BigFloat *x, long double expected) {
+    /* This checks numerical accuracy to 1e-8, not arbitrary precision. */
+    return fabsl(float_value(x) - expected) <= 1e-8L * fmaxl(1, fabsl(expected));
+}
 
-            Known bugs:
-                Fixed using a different approach:
-                    bigFloatSqrt is loosing precision for some reason 
-                    bigFloatRecip is loosing also precision if I am not mistaken
+static void integers(void) {
+    BigInt a, b, r;
+    bigIntZero(&a);
+    CHECK(equals_u64(&a, 0));
+    int_32ToBigInt(&a, UINT32_MAX);
+    CHECK(equals_u64(&a, UINT32_MAX));
+    CHECK(bigIntFromString(&a, "12345678901234567890") == 0);
+    CHECK(equals_u64(&a, UINT64_C(12345678901234567890)));
+    CHECK(bigIntFromString(&a, "") == 0);
+    CHECK(equals_u64(&a, 0));
+    CHECK(bigIntFromString(&a, "00042") == 0);
+    CHECK(equals_u64(&a, 42));
+    CHECK(bigIntFromString(&a, "12x") == -1);
+    CHECK(bigIntFromString(&a, "-1") == -1);
+    CHECK(bigIntFromString(&a, " 1") == -1);
+    char oversized[1301];
+    for (int i = 0; i < 1300; ++i) oversized[i] = '9';
+    oversized[1300] = '\0';
+    CHECK(bigIntFromString(&a, oversized) == INT_MAX);
 
-                Turnicated the precision loss in the said functions
+    int_32ToBigInt(&a, 42);
+    CHECK(bigIntAddUInt_32(&a, 7) == 0 && equals_u64(&a, 49));
+    CHECK(bigIntMulUInt_32(&a, 10) == 0 && equals_u64(&a, 490));
+    CHECK(bigIntModUInt32(&a, 13) == 9 && equals_u64(&a, 490));
+    CHECK(bigIntDivUInt32(&a, 13) == 9 && equals_u64(&a, 37));
+    CHECK(bigIntDivUInt32(&a, 0) == (uint32_t)INT_MAX);
+    CHECK(bigIntModUInt32(&a, 0) == (uint32_t)INT_MAX);
+    CHECK(equals_u64(&a, 37));
 
+    int_32ToBigInt(&a, 128);
+    CHECK(bigIntGetBit(&a, 7) == 1);
+    CHECK(bigIntGetBit(&a, 0) == 0 && bigIntGetBit(&a, 32) == 0);
+    CHECK(bigIntShiftLeft(&a, 33) == 0);
+    CHECK(equals_u64(&a, UINT64_C(1) << 40));
+    CHECK(bigIntShiftRight(&a, 35) == 0 && equals_u64(&a, 32));
+    CHECK(bigIntShiftLeft(&a, -2) == 0 && equals_u64(&a, 8));
+    CHECK(bigIntShiftRight(&a, -1) == 0 && equals_u64(&a, 16));
+    CHECK(bigIntShiftRight(&a, 4096) == 0 && equals_u64(&a, 0));
+    int_32ToBigInt(&a, 1);
+    CHECK(bigIntShiftLeft(&a, 4096) == INT_MAX);
 
-            the resut of :sqrt(144) = +0xc00000003f7fffff0400000000000000 * 2^(-124)  (size=4) is 12.000000000000000000001 due to 
-            AM-GM Inequality (Arithmetic Mean-Geometric Mean) due to my method (Newton's method of square root) so yeah that can be 'known weakness'
-*/
+    int_32ToBigInt(&a, 100);
+    int_32ToBigInt(&b, 30);
+    CHECK(bigIntCmp(&a, &b) == 1 && bigIntCmp(&b, &a) == -1);
+    CHECK(bigIntCmp(&a, &a) == 0);
+    CHECK(bigIntSub(&r, &a, &b) == 0 && equals_u64(&r, 70));
+    CHECK(bigIntSub(&a, &a, &b) == 0 && equals_u64(&a, 70));
+    CHECK(bigIntSub(&r, &b, &a) == -1);
+    int_32ToBigInt(&a, 1);
+    CHECK(bigIntShiftLeft(&a, 32) == 0);
+    int_32ToBigInt(&b, 1);
+    CHECK(bigIntSub(&a, &a, &b) == 0 && equals_u64(&a, UINT32_MAX));
 
-/* helper to print a BigInt in hex (most-significant limb first) */
-void bigIntPrintHex(const BigInt *a);
+    const uint32_t values[] = {0, 1, 65535, 65536, 123456789, UINT32_MAX};
+    for (unsigned i = 0; i < sizeof(values) / sizeof(values[0]); ++i) {
+        for (unsigned j = 0; j < sizeof(values) / sizeof(values[0]); ++j) {
+            int_32ToBigInt(&a, values[i]);
+            int_32ToBigInt(&b, values[j]);
+            uint64_t expected = (uint64_t)values[i] * values[j];
+            CHECK(bigIntMulFFT(&r, &a, &b) == 0 && equals_u64(&r, expected));
+            CHECK(bigIntMulFFT(&a, &a, &b) == 0 && equals_u64(&a, expected));
+            int_32ToBigInt(&a, values[i]);
+            CHECK(bigIntMulFFT(&b, &a, &b) == 0 && equals_u64(&b, expected));
+        }
+    }
+    CHECK(bigIntFactorial(&r, 0) == 0 && equals_u64(&r, 1));
+    CHECK(bigIntFactorial(&r, 1) == 0 && equals_u64(&r, 1));
+    CHECK(bigIntFactorial(&r, 20) == 0 && equals_u64(&r, UINT64_C(2432902008176640000)));
+    CHECK(bigIntFactorial(&r, 1000) == INT_MAX);
+    bigIntZero(&a);
+    a.size = MAX_LIMBS;
+    for (int i = 0; i < MAX_LIMBS; ++i) a.limbs[i] = UINT32_MAX;
+    int_32ToBigInt(&b, 2);
+    CHECK(bigIntMulFFT(&r, &a, &b) == INT_MAX);
+    CHECK(bigIntMulUInt_32(&a, 2) == INT_MAX);
 
-/* helper to print a BigFloat (sign + mantissa hex + exp) */
-void bigFloatPrint(const BigFloat *x);
+    /* Carry growth, stale inactive limbs, and canonical zero regressions. */
+    int_32ToBigInt(&a, UINT32_MAX);
+    CHECK(bigIntAddUInt_32(&a, 1) == 0 && equals_u64(&a, UINT64_C(1) << 32));
+    int_32ToBigInt(&a, 1);
+    CHECK(bigIntShiftLeft(&a, 32) == 0);
+    CHECK(bigIntMulUInt_32(&a, 0) == 0 && equals_u64(&a, 0));
+    CHECK(bigIntCmp(&a, &a) == 0);
+    CHECK(bigIntFromString(&a, "4294967296") == 0 &&
+          equals_u64(&a, UINT64_C(1) << 32));
+    CHECK(bigIntFromString(&a, "18446744073709551616") == 0);
+    CHECK(a.size == 3 && a.limbs[0] == 0 && a.limbs[1] == 0 && a.limbs[2] == 1);
+    int_32ToBigInt(&a, UINT32_MAX);
+    a.limbs[1] = UINT32_MAX; /* Inactive storage is not part of the value. */
+    CHECK(bigIntAddUInt_32(&a, UINT32_MAX) == 0 &&
+          equals_u64(&a, UINT64_C(8589934590)));
+    bigIntZero(&a);
+    a.size = MAX_LIMBS - 1;
+    for (int i = 0; i < a.size; ++i) a.limbs[i] = UINT32_MAX;
+    CHECK(bigIntAddUInt_32(&a, 1) == 0 && a.size == MAX_LIMBS);
+    CHECK(a.limbs[MAX_LIMBS - 1] == 1 && a.limbs[0] == 0);
+    for (int i = 0; i < MAX_LIMBS; ++i) a.limbs[i] = UINT32_MAX;
+    CHECK(bigIntAddUInt_32(&a, 1) == INT_MAX);
+}
+
+static void floats(void) {
+    BigFloat a, b, r;
+    bigFloatZero(&a);
+    CHECK(equals_u64(&a.mantissa, 0) && a.exp == 0 && a.sign == 1);
+    bigFloatFromUint32(&a, 42);
+    CHECK(float_value(&a) == 42 && a.mantissa.limbs[0] == UINT32_C(0xa8000000));
+    bigFloatCopy(&b, &a);
+    bigFloatCopy(&b, &b);
+    CHECK(float_value(&b) == 42);
+    CHECK(bigFloatNormalize(&b) == 0 && float_value(&b) == 42);
+    CHECK(bigFloatShiftLeft(&b, 3) == 0 && float_value(&b) == 336);
+    CHECK(bigFloatShiftRight(&b, 3) == 0 && float_value(&b) == 42);
+    bigFloatZero(&a);
+    a.mantissa.size = 2;
+    a.mantissa.limbs[0] = 123;
+    a.mantissa.limbs[1] = UINT32_C(0x80000000);
+    bigFloatTruncate(&a, 0); /* Clamped to one limb. */
+    CHECK(a.mantissa.size == 1 && a.exp == 32 && float_value(&a) == ldexpl(1, 63));
+
+    bigFloatFromUint32(&a, 1000);
+    bigFloatFromUint32(&b, 250);
+    CHECK(bigFloatCmpAbs(&a, &b) == 1 && bigFloatCmpAbs(&b, &a) == -1);
+    CHECK(bigFloatCmpAbs(&a, &a) == 0);
+    CHECK(bigFloatAdd(&r, &a, &b) == 0 && float_value(&r) == 1250);
+    CHECK(bigFloatSub(&r, &a, &b) == 0 && float_value(&r) == 750);
+    CHECK(bigFloatSub(&r, &b, &a) == 0 && float_value(&r) == -750);
+    b.sign = -1;
+    CHECK(bigFloatMul(&r, &a, &b) == 0 && float_value(&r) == -250000);
+    CHECK(bigFloatAdd(&r, &a, &b) == 0 && float_value(&r) == 750);
+    bigFloatCopy(&b, &a);
+    CHECK(bigFloatSub(&r, &a, &b) == 0 && float_value(&r) == 0);
+    bigFloatZero(&b);
+    CHECK(bigFloatMul(&r, &a, &b) == 0 && float_value(&r) == 0);
+    CHECK(bigFloatAdd(&r, &a, &b) == 0 && float_value(&r) == 1000);
+    CHECK(bigFloatReciprocal(&r, &b, 4) == INT_MAX);
+    CHECK(bigFloatDiv(&r, &a, &b, 4) == INT_MAX);
+    CHECK(bigFloatSqrt(&r, &b, 4) == 0 && float_value(&r) == 0);
+    b.sign = -1;
+    CHECK(bigFloatSqrt(&r, &b, 4) == -1);
+    bigFloatFromUint32(&a, 2);
+    CHECK(bigFloatReciprocal(&r, &a, 4) == 0 && near(&r, 0.5L));
+    bigFloatFromUint32(&a, 7);
+    CHECK(bigFloatReciprocal(&r, &a, 4) == 0 && near(&r, 1.0L / 7));
+    bigFloatFromUint32(&b, 22);
+    CHECK(bigFloatDiv(&r, &b, &a, 4) == 0 && near(&r, 22.0L / 7));
+    bigFloatFromUint32(&a, 2);
+    CHECK(bigFloatSqrt(&r, &a, 4) == 0 && near(&r, sqrtl(2)));
+    bigFloatFromUint32(&a, 144);
+    CHECK(bigFloatSqrt(&r, &a, 4) == 0 && near(&r, 12));
+
+    bigFloatZero(&b);
+    CHECK(bigFloatCmpAbs(&a, &b) == 1);
+    bigFloatFromUint32(&a, 1);
+    CHECK(bigFloatShiftLeft(&a, 32) == 0);
+    bigFloatFromUint32(&b, 2);
+    CHECK(bigFloatCmpAbs(&a, &b) == 1);
+    CHECK(bigFloatCmpAbs(&b, &a) == -1);
+    CHECK(bigFloatSub(&r, &a, &b) == 0 && float_value(&r) == 4294967294.0L);
+    CHECK(bigFloatSub(&r, &b, &a) == 0 && float_value(&r) == -4294967294.0L);
+}
+
+static void magnitude_comparison(void) {
+    BigFloat a, b, r;
+    bigFloatZero(&a);
+    bigFloatZero(&b);
+    CHECK(bigFloatCmpAbs(&a, &b) == 0);
+    bigFloatFromUint32(&a, 1);
+    CHECK(bigFloatCmpAbs(&b, &a) == -1);
+
+    /* Same value with different mantissa widths, including unnormalized seeds. */
+    bigFloatCopy(&b, &a);
+    CHECK(bigIntShiftLeft(&b.mantissa, 32) == 0);
+    b.exp -= 32;
+    b.sign = -1;
+    CHECK(bigFloatCmpAbs(&a, &b) == 0);
+    CHECK(bigFloatAdd(&r, &a, &b) == 0 && float_value(&r) == 0);
+    b.mantissa.limbs[0] = 1;
+    CHECK(bigFloatCmpAbs(&a, &b) == -1 && bigFloatCmpAbs(&b, &a) == 1);
+    int_32ToBigInt(&b.mantissa, 1);
+    b.exp = 0;
+    CHECK(bigFloatCmpAbs(&a, &b) == 0);
+
+    /* Full-width comparison must preserve even the lowest bit. */
+    bigFloatZero(&b);
+    b.mantissa.size = MAX_LIMBS;
+    b.mantissa.limbs[MAX_LIMBS - 1] = UINT32_C(0x80000000);
+    b.exp = -(32 * MAX_LIMBS - 1);
+    CHECK(bigFloatCmpAbs(&a, &b) == 0);
+    b.mantissa.limbs[0] = 1;
+    CHECK(bigFloatCmpAbs(&a, &b) == -1);
+    a.exp = b.exp = INT32_MAX;
+    CHECK(bigFloatCmpAbs(&a, &b) == -1);
+    a.exp = INT32_MIN;
+    CHECK(bigFloatCmpAbs(&a, &b) == -1);
+    b.exp = INT32_MIN;
+    CHECK(bigFloatCmpAbs(&a, &b) == -1);
+
+    /* Cross-check many exact binary values against an independent oracle. */
+    for (uint32_t i = 1; i <= 200; ++i) {
+        bigFloatFromUint32(&a, i * 7919);
+        bigFloatFromUint32(&b, i * 3571);
+        a.exp += (int)(i % 17) - 8;
+        b.exp += (int)(i % 13) - 6;
+        CHECK(bigIntShiftLeft(&b.mantissa, 32) == 0);
+        b.exp -= 32;
+        b.sign = -1;
+        long double av = fabsl(float_value(&a));
+        long double bv = fabsl(float_value(&b));
+        int expected = (av > bv) - (av < bv);
+        CHECK(bigFloatCmpAbs(&a, &b) == expected);
+        CHECK(bigFloatCmpAbs(&b, &a) == -expected);
+    }
+}
 
 int main(void) {
-    BigInt a, b, res, copy;
-    BigFloat fa, fb, fres, ftmp;
-    uint32_t rem;
-    int rc;
-
-    /* ---------- 1. string conversion & add ---------- */
-    printf("=== Test: string conversion & addition ===\n");
-    bigIntFromString(&a, "123456789");
-    bigIntFromString(&b, "987654321");
-    printf("a = "); bigIntPrintHex(&a);
-    printf("b = "); bigIntPrintHex(&b);
-
-    bigIntAddUInt_32(&a, 1);
-    printf("a + 1 = "); bigIntPrintHex(&a);
-
-    /* ---------- 2. mul/div/mod by uint32 ---------- */
-    printf("\n=== Test: mul/div/mod by 32-bit ===\n");
-    bigIntFromString(&a, "1000000000000");   // 10^12
-    printf("a = "); bigIntPrintHex(&a);
-
-    bigIntMulUInt_32(&a, 12345);
-    printf("a * 12345 = "); bigIntPrintHex(&a);
-
-    copy = a;
-    rem = bigIntDivUInt32(&a, 1000);
-    printf("after div by 1000: "); bigIntPrintHex(&a);
-    printf("remainder = %u\n", rem);
-
-    rem = bigIntModUInt32(&copy, 1000);
-    printf("mod 1000 of original = %u\n", rem);
-
-    /* ---------- 3. get bit ---------- */
-    printf("\n=== Test: get bit ===\n");
-    bigIntFromString(&a, "128");  // binary: 10000000
-    printf("a = "); bigIntPrintHex(&a);
-    printf("bit 0 = %d\n", bigIntGetBit(&a, 0));
-    printf("bit 7 = %d\n", bigIntGetBit(&a, 7));
-    printf("bit 8 = %d\n", bigIntGetBit(&a, 8));
-
-    /* ---------- 4. FFT multiplication ---------- */
-    printf("\n=== Test: FFT multiplication ===\n");
-
-    bigIntFromString(&a, "12345678901234567890");
-    bigIntFromString(&b, "98765432109876543210");
-    printf("a = "); bigIntPrintHex(&a);
-    printf("b = "); bigIntPrintHex(&b);
-
-    if (bigIntMulFFT(&res, &a, &b) == 0) {
-        printf("a * b = "); bigIntPrintHex(&res);
-    } else {
-        printf("FFT multiplication overflowed!\n");
-    }
-
-    bigIntFromString(&a, "0");
-    bigIntFromString(&b, "99999999999999999999");
-    if (bigIntMulFFT(&res, &a, &b) == 0) {
-        printf("0 * big = "); bigIntPrintHex(&res);
-    }
-
-    bigIntFromString(&a, "65536");
-    bigIntFromString(&b, "65536");
-    if (bigIntMulFFT(&res, &a, &b) == 0) {
-        printf("2^16 * 2^16 = "); bigIntPrintHex(&res);
-    }
-
-    bigIntFromString(&a, "4294967295");
-    bigIntFromString(&b, "4294967295");
-    if (bigIntMulFFT(&res, &a, &b) == 0) {
-        printf("(2^32-1)^2 = "); bigIntPrintHex(&res);
-    }
-
-    /* ================================================================
-       BIGFLOAT TESTS
-       ================================================================ */
-
-    printf("\n\n========== BIGFLOAT ZONE ==========\n");
-
-    /* ---------- 5. BigFloat zero / fromUint32 / copy / normalize ---------- */
-    printf("\n=== Test: BigFloat basic constructors ===\n");
-
-    bigFloatZero(&fa);
-    printf("zero = "); bigFloatPrint(&fa);
-
-    bigFloatFromUint32(&fa, 123456789);
-    printf("from 123456789 = "); bigFloatPrint(&fa);
-
-    bigFloatCopy(&fb, &fa);
-    printf("copy = "); bigFloatPrint(&fb);
-
-    /* ---------- 6. BigFloat shifts ---------- */
-    printf("\n=== Test: BigFloat shifts ===\n");
-
-    bigFloatFromUint32(&fa, 1);
-    printf("1 = "); bigFloatPrint(&fa);
-
-    bigFloatShiftLeft(&fa, 32);
-    printf("1 << 32 = "); bigFloatPrint(&fa);
-
-    bigFloatShiftLeft(&fa, 5);
-    printf("then << 5 = "); bigFloatPrint(&fa);
-
-    bigFloatShiftRight(&fa, 37);
-    printf("then >> 37 (should be back near 1) = "); bigFloatPrint(&fa);
-
-    /* ---------- 7. BigFloat mul ---------- */
-    printf("\n=== Test: BigFloat multiplication ===\n");
-
-    bigFloatFromUint32(&fa, 123456789);
-    bigFloatFromUint32(&fb, 987654321);
-    printf("fa = "); bigFloatPrint(&fa);
-    printf("fb = "); bigFloatPrint(&fb);
-
-    rc = bigFloatMul(&fres, &fa, &fb);
-    if (rc == 0) {
-        printf("fa * fb = "); bigFloatPrint(&fres);
-    } else {
-        printf("bigFloatMul failed with code %d\n", rc);
-    }
-
-    /* ---------- 8. BigFloat add / sub ---------- */
-    printf("\n=== Test: BigFloat add / sub ===\n");
-
-    bigFloatFromUint32(&fa, 1000);
-    bigFloatFromUint32(&fb, 250);
-    printf("1000 + 250 = ");
-    if (bigFloatAdd(&fres, &fa, &fb) == 0)
-        bigFloatPrint(&fres);
-
-    printf("1000 - 250 = ");
-    if (bigFloatSub(&fres, &fa, &fb) == 0)
-        bigFloatPrint(&fres);
-
-    // different exponents
-    bigFloatFromUint32(&fa, 1);
-    bigFloatShiftLeft(&fa, 64);          // 2^64
-    bigFloatFromUint32(&fb, 1);
-    printf("2^64 + 1 = ");
-    if (bigFloatAdd(&fres, &fa, &fb) == 0)
-        bigFloatPrint(&fres);
-
-    /* ---------- 9. BigFloat reciprocal + div ---------- */
-    printf("\n=== Test: BigFloat reciprocal & division ===\n");
-
-    bigFloatFromUint32(&fa, 7);
-    printf("1 / 7 ≈ ");
-    if (bigFloatReciprocal(&fres, &fa, 4) == 0)
-        bigFloatPrint(&fres);
-
-    bigFloatFromUint32(&fa, 22);
-    bigFloatFromUint32(&fb, 7);
-    printf("22 / 7 ≈ ");
-    if (bigFloatDiv(&fres, &fa, &fb, 4) == 0)
-        bigFloatPrint(&fres);
-
-    /* ---------- 10. BigFloat sqrt ---------- */
-    printf("\n=== Test: BigFloat sqrt ===\n");
-
-    bigFloatFromUint32(&fa, 2);
-    printf("sqrt(2) ≈ ");
-    if (bigFloatSqrt(&fres, &fa, 6) == 0)
-        bigFloatPrint(&fres);
-
-    bigFloatFromUint32(&fa, 144);
-    printf("sqrt(144) = ");
-    if (bigFloatSqrt(&fres, &fa, 4) == 0)
-        bigFloatPrint(&fres);
-
-    /* ---------- 11. compare abs ---------- */
-    printf("\n=== Test: bigFloatCmpAbs ===\n");
-
-    bigFloatFromUint32(&fa, 100);
-    bigFloatFromUint32(&fb, 50);
-    printf("|100| vs |50| → %d\n", bigFloatCmpAbs(&fa, &fb));
-
-    bigFloatFromUint32(&fa, 50);
-    bigFloatFromUint32(&fb, 100);
-    printf("|50| vs |100| → %d\n", bigFloatCmpAbs(&fa, &fb));
-
-    bigFloatFromUint32(&fa, 77);
-    bigFloatFromUint32(&fb, 77);
-    printf("|77| vs |77| → %d\n", bigFloatCmpAbs(&fa, &fb));
-
-    printf("\n========== ALL TESTS DONE ==========\n");
-    return(0);
-}
-
-void bigIntPrintHex(const BigInt *a) {
-    printf("0x");
-    for (int i = a->size - 1; i >= 0; i--) {
-        printf("%08x", a->limbs[i]);
-    }
-    printf("  (size=%d)\n", a->size);
-}
-
-void bigFloatPrint(const BigFloat *x) {
-    if (x->sign < 0) printf("-");
-    else             printf("+");
-
-    printf("0x");
-    for (int i = x->mantissa.size - 1; i >= 0; i--)
-        printf("%08x", x->mantissa.limbs[i]);
-    printf(" * 2^(%d)  (size=%d)\n", x->exp, x->mantissa.size);
+    integers();
+    floats();
+    magnitude_comparison();
+    printf("%u checks, %u failures\n", checks, failures);
+    return failures ? EXIT_FAILURE : EXIT_SUCCESS;
 }
