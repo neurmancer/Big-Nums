@@ -1,0 +1,37 @@
+.TH BIGINTSHIFTLEFT 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.nr HY 0
+.ds AD l
+.SH NAME
+bigIntShiftLeft, bigIntShiftRight, bigIntGetBit \- shift or inspect bits of a big integer
+.SH SYNOPSIS
+.nf
+.B #include \(dqbignums.h\(dq
+.sp
+.BI "int bigIntShiftLeft(BigInt *" "a" ", int " "bits" ");"
+.sp
+.BI "int bigIntShiftRight(BigInt *" "a" ", int " "bits" ");"
+.sp
+.BI "int bigIntGetBit(const BigInt *" "a" ", int " "bit_index" ");"
+.fi
+.SH DESCRIPTION
+The shift functions modify a in place by bits binary positions.
+Left shift multiplies by a power of two; right shift discards low bits.
+Right shifting past all active limbs produces canonical zero.
+A zero count has no effect; a negative count delegates to the opposite shift.
+.PP
+.B bigIntGetBit()
+returns the bit at bit_index, counting from zero at the least significant bit.
+The index must be nonnegative.  Indices beyond the active limbs return zero.
+.SH RETURN VALUE
+Left shift returns 0 or INT_MAX for capacity overflow.
+Right shift returns 0 for nonnegative counts; negative counts can return
+the delegated left-shift error.
+Bit lookup returns 0 or 1.
+.SH BUGS
+Left shift conservatively reserves an extra limb and can reject a shift
+whose actual result would fit.
+Do not pass INT_MIN as a shift count, or counts large enough to overflow
+intermediate signed arithmetic.  Negative bit indices are not validated.
+.SH SEE ALSO
+.BR bignums (3),
+.BR bignums (7)

@@ -1,0 +1,27 @@
+.TH BIGFLOATCMPABS 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.nr HY 0
+.ds AD l
+.SH NAME
+bigFloatCmpAbs \- compare big float magnitudes exactly
+.SH SYNOPSIS
+.nf
+.B #include \(dqbignums.h\(dq
+.sp
+.BI "int bigFloatCmpAbs(const BigFloat *" "a" ","
+.BI "    const BigFloat *" "b" ");"
+.fi
+.SH DESCRIPTION
+Compares the absolute values of a and b, ignoring their signs.
+Zero is less than every nonzero magnitude.
+The comparison accounts for the exponent and mantissa bit length, then
+compares aligned bits without shifting or truncating the inputs.
+Equivalent values with different mantissa widths compare equal.
+Normalized and unnormalized mantissas are supported; the size fields must
+still be within the valid storage bounds.
+.SH RETURN VALUE
+Returns \-1, 0, or 1 when the magnitude of a is less than, equal to, or
+greater than that of b.  These values are comparison results, not errors.
+.SH SEE ALSO
+.BR bigFloatAdd (3),
+.BR bignums (3),
+.BR bignums (7)

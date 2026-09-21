@@ -5,6 +5,13 @@
 
 # BigNums API and usage
 
+> U a goblin that don't wanna read 300 lines of documentation? I got you too bruh! Worry not just 
+check the demo.c and find your required function and check the man pages after setup (see the [setup](/README.md)) and you are good to go mwa... anyways corpo Neuro takes from here have fun!
+
+The [Unix manual](../man/README.md) provides a `bignums(7)` overview,
+
+
+
 BigNums is an experimental C library for unsigned integers and signed binary
 floats. Storage is fixed at `MAX_LIMBS = 128` 32-bit limbs: integers can represent
 0 through 2^4096 - 1, and floats have at most 4096 mantissa bits. It is not an
@@ -13,9 +20,42 @@ under [Known limitations](#known-limitations).
 
 ## Build and run
 
-Use a C99-or-later compiler, Make, and the system math library. Both library
-source files are required; the FFT implementation is included in this directory.
-From the repository root:
+Use a Linux/ELF C99-or-later compiler, GNU Make, and the system math library.
+From the repository root, `./build.sh` builds a position-independent shared
+library and installs it, both public headers, and the manuals under
+`$HOME/.local`. It calls `man_setup.sh` for manual installation. Override the
+prefix with `./build.sh PREFIX=/usr/local` when you have write access, or use
+`DESTDIR=/tmp/package PREFIX=/usr` for a staged package. Prefix-based installs do not
+invoke sudo or modify shell startup files.
+
+```sh
+cc app.c -I"$HOME/.local/include" -L"$HOME/.local/lib" \
+    -Wl,-rpath,"$HOME/.local/lib" -lbignums -o app
+```
+
+For native system-wide linking without path flags, use `./build.sh --system`.
+This builds first and uses sudo (unless already root) to install into
+`/usr/local`, including the headers and manuals. It writes `/usr/local/lib`
+to `/etc/ld.so.conf.d/bignums.conf` and runs `ldconfig`. On a standard native
+Linux toolchain, applications can then use `cc app.c -lbignums -o app` and
+`#include <bignums.h>`. This mode requires Linux/glibc and `ldconfig`; it accepts
+no installation overrides. Custom prefixes and `DESTDIR` remain available
+through the original `NAME=value` mode.
+
+The installed library is `libbignums.so.0.1.0`, with SONAME `libbignums.so.0`
+and relative symlinks for the SONAME and `-lbignums` linker name. The library
+records its own dependency on the math library. Applications that directly
+call math functions should also link `-lm`. `-L` controls link-time lookup;
+rpath controls runtime lookup. System installs may instead use the system
+loader cache, managed by the administrator with `ldconfig` where applicable.
+
+`make -C bigNums` builds the shared library under `build/lib` without installing.
+`make -C bigNums test demo` runs the regression suite against it and builds
+`build/demo`; these executables use a relative runtime path to `build/lib`.
+`make -C bigNums install` installs both library and manuals, defaulting to
+`/usr/local` (the shell scripts default to `$HOME/.local`).
+
+Custom drivers remain supported:
 
 ```sh
 make -C bigNums MAIN=demo.c TARGET=demo
@@ -24,7 +64,8 @@ make -C bigNums MAIN=test.c TARGET=test_big
 ./bigNums/test_big
 ```
 
-Always supply `MAIN`: the Makefile default is `main.c`, which is not included.
+Supply `MAIN` to build a custom driver; without it the default target builds
+only the shared library.
 The test program reports failed checks and returns a nonzero exit status when
 any fail. See [Tests](#tests) for coverage and regression cases.
 
@@ -36,9 +77,7 @@ cc -std=c99 -Wall -Wextra -O2 demo.c bigNumLibThingy.c smartFFTThingy.c -lm -o d
 
 Application code only needs `#include "bignums.h"`. There is no FFT-header
 inclusion-order requirement. Include `<limits.h>` yourself when checking
-`INT_MAX`. The header currently declares the private `clz32` helper as `static`,
-which can produce an unused/undefined-static-function compiler warning in
-application translation units.
+`INT_MAX`. Private helpers are defined only in the implementation sources.
 
 ## Representation and ownership
 

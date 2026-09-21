@@ -1,0 +1,32 @@
+.TH BIGFLOATSHIFTLEFT 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.nr HY 0
+.ds AD l
+.SH NAME
+bigFloatShiftLeft, bigFloatShiftRight \- shift a binary big float mantissa
+.SH SYNOPSIS
+.nf
+.B #include \(dqbignums.h\(dq
+.sp
+.BI "int bigFloatShiftLeft(BigFloat *" "x" ", int " "bits" ");"
+.sp
+.BI "int bigFloatShiftRight(BigFloat *" "x" ", int " "bits" ");"
+.fi
+.SH DESCRIPTION
+These functions shift the mantissa of x by bits positions, then normalize it.
+Left shift multiplies the value by 2 raised to bits.
+Right shift divides by that factor but discards low mantissa bits; it can
+lose precision or become zero.  It is not just an exponent adjustment.
+.PP
+A zero count has no effect.  Negative counts delegate to the opposite integer
+mantissa shift before normalization.
+.SH RETURN VALUE
+Returns 0 on success, or the integer-shift or normalization error.
+.SH BUGS
+The restrictions on counts and capacity in
+.BR bigIntShiftLeft (3)
+apply.  Exponent adjustment during normalization is not checked for overflow.
+.SH SEE ALSO
+.BR bigFloatNormalize (3),
+.BR bigIntShiftLeft (3),
+.BR bignums (3),
+.BR bignums (7)

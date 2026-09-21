@@ -1,0 +1,43 @@
+.TH BIGINTZERO 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.nr HY 0
+.ds AD l
+.SH NAME
+bigIntZero, int_32ToBigInt, bigIntFromString \- initialize an unsigned big integer
+.SH SYNOPSIS
+.nf
+.B #include \(dqbignums.h\(dq
+.sp
+.BI "void bigIntZero(BigInt *" "a" ");"
+.sp
+.BI "void int_32ToBigInt(BigInt *" "a" ", uint32_t " "val" ");"
+.sp
+.BI "int bigIntFromString(BigInt *" "a" ", const char *" "dec_str" ");"
+.fi
+.SH DESCRIPTION
+.B bigIntZero()
+clears all limbs of a and sets its size to 1, representing zero.
+.B int_32ToBigInt()
+initializes a from val, clearing unused limbs.
+Neither function requires a previously initialized destination.
+.PP
+.B bigIntFromString()
+initializes a to zero, then parses the NUL-terminated decimal string dec_str.
+Only ASCII digits 0 through 9 are accepted; signs, whitespace, and separators
+are rejected.  Leading zeros are accepted.  An empty string produces zero.
+The string pointer must not be NULL.
+.SH RETURN VALUE
+The first two functions return no value.
+.B bigIntFromString()
+returns 0 on success, \-1 for a non-digit character, or INT_MAX if capacity
+is exceeded.  An error can leave a partial result in a.
+.SH EXAMPLES
+.EX
+BigInt n;
+if (bigIntFromString(&n, "4294967296") != 0)
+    return 1;
+printBigInt(&n);
+.EE
+.SH SEE ALSO
+.BR printBigInt (3),
+.BR bignums (3),
+.BR bignums (7)

@@ -1,0 +1,30 @@
+.TH BIGINTFACTORIAL 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.nr HY 0
+.ds AD l
+.SH NAME
+bigIntFactorial \- compute an unsigned integer factorial
+.SH SYNOPSIS
+.nf
+.B #include \(dqbignums.h\(dq
+.sp
+.BI "int bigIntFactorial(BigInt *" "result" ", uint32_t " "n" ");"
+.fi
+.SH DESCRIPTION
+Stores n factorial in result using repeated scalar multiplication.
+Both 0! and 1! are 1.  The destination need not be initialized.
+The result must fit within MAX_LIMBS limbs.
+.SH RETURN VALUE
+Returns 0 on success or INT_MAX on capacity overflow.
+On failure result may contain a partial, overflowed calculation.
+.SH EXAMPLES
+.EX
+BigInt n;
+if (bigIntFactorial(&n, 50) != 0)
+    return 1;
+printBigInt(&n);
+.EE
+.SH SEE ALSO
+.BR bigIntMulUInt_32 (3),
+.BR printBigInt (3),
+.BR bignums (3),
+.BR bignums (7)

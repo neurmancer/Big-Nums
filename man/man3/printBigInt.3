@@ -1,0 +1,38 @@
+.TH PRINTBIGINT 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.nr HY 0
+.ds AD l
+.SH NAME
+printBigInt, printBigFloat \- print a big number in decimal to standard output
+.SH SYNOPSIS
+.nf
+.B #include \(dqbignums.h\(dq
+.sp
+.BI "void printBigInt(const BigInt *" "a" ");"
+.sp
+.BI "void printBigFloat(const BigFloat *" "x" ","
+.BI "    int " "decimal_places" ");"
+.fi
+.SH DESCRIPTION
+.B printBigInt()
+writes the unsigned integer a in decimal to stdout.
+.B printBigFloat()
+writes x with a sign if negative, an integer part, a decimal point, and
+fractional digits.  Negative decimal_places is treated as zero.
+Even zero decimal places prints a decimal point: exact 2 prints "2.".
+.PP
+Neither function modifies its input or appends a newline.
+The caller may use putchar to terminate a line.
+.SH RETURN VALUE
+These functions return no value and cannot report output or arithmetic errors.
+.SH BUGS
+The float printer has only a 22-byte fractional digit buffer.  Large
+place counts can overrun it; do not use it for arbitrary-length decimal
+output.  Modest counts such as 6 are used in the demo.
+.PP
+The routine attempts fractional rounding by adding 0.5, but prints the
+integer part first and does not carry a rounded fraction into it.
+Internal arithmetic errors are ignored; large magnitudes and scales can
+produce invalid output.  Requested decimal places do not guarantee accuracy.
+.SH SEE ALSO
+.BR bignums (3),
+.BR bignums (7)

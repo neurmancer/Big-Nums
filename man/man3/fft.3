@@ -1,0 +1,39 @@
+.TH FFT 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.nr HY 0
+.ds AD l
+.SH NAME
+fft, fft_arbitrary \- transform an array of complex numbers in place
+.SH SYNOPSIS
+.nf
+.B #include \(dqcomplexFFT.h\(dq
+.sp
+.BI "int fft(complexNum *" "x" ", int " "n" ", int " "inverse" ");"
+.sp
+.BI "int fft_arbitrary(complexNum *" "x" ", int " "n" ", int " "inverse" ");"
+.fi
+.SH DESCRIPTION
+The array x must contain n initialized complexNum elements, each with double
+fields re and im.  The transform overwrites x.
+A zero inverse argument selects the forward transform with a negative
+exponential sign; any nonzero value selects the inverse with a positive sign
+and division by n.
+.PP
+.B fft()
+requires a positive power-of-two length and performs an iterative radix-2 FFT.
+.B fft_arbitrary()
+uses that fast path for powers of two and Bluestein convolution otherwise.
+Bluestein temporary buffers are allocated internally and freed before return.
+.SH RETURN VALUE
+.B fft()
+returns 0 for valid inputs.
+.B fft_arbitrary()
+returns 0 on success or \-1 for a nonpositive length or allocation failure.
+.SH BUGS
+.B fft()
+does not validate its length.  Both routines assume valid pointers and array
+bounds.  Very large lengths can overflow signed size calculations; such
+lengths are unsupported.
+.SH SEE ALSO
+.BR bigIntMulFFT (3),
+.BR bignums (3),
+.BR bignums (7)

@@ -1,0 +1,34 @@
+.TH BIGFLOATZERO 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.nr HY 0
+.ds AD l
+.SH NAME
+bigFloatZero, bigFloatFromUint32, bigFloatCopy \- initialize or copy a binary big float
+.SH SYNOPSIS
+.nf
+.B #include \(dqbignums.h\(dq
+.sp
+.BI "void bigFloatZero(BigFloat *" "x" ");"
+.sp
+.BI "void bigFloatFromUint32(BigFloat *" "x" ", uint32_t " "v" ");"
+.sp
+.BI "void bigFloatCopy(BigFloat *" "dst" ","
+.BI "    const BigFloat *" "src" ");"
+.fi
+.SH DESCRIPTION
+.B bigFloatZero()
+sets x to canonical positive zero: mantissa zero, exp zero, and sign 1.
+.B bigFloatFromUint32()
+sets x to v and normalizes its mantissa.
+These constructors do not require an initialized destination.
+.PP
+.B bigFloatCopy()
+copies the initialized value src to dst and clears unused destination limbs.
+Self-copy is supported.  No memory allocation is needed.
+To construct a negative nonzero value, initialize from its magnitude, then
+set its sign field to \-1.
+.SH RETURN VALUE
+These functions return no value.
+.SH SEE ALSO
+.BR bigFloatNormalize (3),
+.BR bignums (3),
+.BR bignums (7)

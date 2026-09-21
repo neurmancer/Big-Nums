@@ -80,7 +80,6 @@ int bigFloatDiv(BigFloat *result, const BigFloat *a, const BigFloat *b, int targ
 
 
 
-static int clz32(uint32_t x);
 
 
 

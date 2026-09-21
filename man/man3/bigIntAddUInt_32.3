@@ -1,0 +1,43 @@
+.TH BIGINTADDUINT_32 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.nr HY 0
+.ds AD l
+.SH NAME
+bigIntAddUInt_32, bigIntMulUInt_32, bigIntDivUInt32, bigIntModUInt32 \- perform scalar arithmetic on a big integer
+.SH SYNOPSIS
+.nf
+.B #include \(dqbignums.h\(dq
+.sp
+.BI "int bigIntAddUInt_32(BigInt *" "a" ", uint32_t " "b" ");"
+.sp
+.BI "int bigIntMulUInt_32(BigInt *" "a" ", uint32_t " "b" ");"
+.sp
+.BI "uint32_t bigIntDivUInt32(BigInt *" "a" ","
+.BI "    uint32_t " "divisor" ");"
+.sp
+.BI "uint32_t bigIntModUInt32(const BigInt *" "a" ","
+.BI "    uint32_t " "divisor" ");"
+.fi
+.SH DESCRIPTION
+.B bigIntAddUInt_32()
+adds b to a in place, extending the active limbs when needed.
+Inactive limbs are ignored.
+.B bigIntMulUInt_32()
+multiplies a by b in place.  Multiplication by zero produces canonical zero.
+.PP
+.B bigIntDivUInt32()
+replaces a with the quotient of a divided by divisor, discarding the fraction,
+and returns the remainder.
+.B bigIntModUInt32()
+returns the same remainder without changing a.
+A zero divisor leaves a unchanged.
+.SH RETURN VALUE
+Addition and multiplication return 0 on success or INT_MAX on capacity
+overflow.  On overflow, a may already have been modified.
+.PP
+Division and modulo return a uint32_t remainder; they return INT_MAX when
+divisor is zero.  Validate divisor before calling: INT_MAX can also be a
+valid remainder when divisor is greater than INT_MAX.
+.SH SEE ALSO
+.BR bigIntMulFFT (3),
+.BR bignums (3),
+.BR bignums (7)

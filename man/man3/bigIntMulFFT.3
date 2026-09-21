@@ -1,0 +1,28 @@
+.TH BIGINTMULFFT 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.nr HY 0
+.ds AD l
+.SH NAME
+bigIntMulFFT \- multiply two big integers using FFT convolution
+.SH SYNOPSIS
+.nf
+.B #include \(dqbignums.h\(dq
+.sp
+.BI "int bigIntMulFFT(BigInt *" "result" ", const BigInt *" "a" ","
+.BI "    const BigInt *" "b" ");"
+.fi
+.SH DESCRIPTION
+Multiplies a by b and stores the product in result.
+The destination may be the same object as either or both inputs.
+The inputs must be initialized; a distinct destination need not be.
+.PP
+Each 32-bit limb is split into two base-65536 digits.  The implementation
+uses a power-of-two FFT convolution, rounds coefficients, propagates carries,
+and repacks the limbs.  Temporary heap buffers are freed before return.
+.SH RETURN VALUE
+Returns 0 on success, INT_MAX if the product exceeds MAX_LIMBS, or \-1 on
+allocation or FFT failure.  No caller-side deallocation is required.
+.SH SEE ALSO
+.BR bigIntMulUInt_32 (3),
+.BR fft (3),
+.BR bignums (3),
+.BR bignums (7)

@@ -1,0 +1,73 @@
+.TH BIGNUMS 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.nr HY 0
+.ds AD l
+.SH NAME
+bignums, BigInt, BigFloat \- fixed-capacity integer and binary float types
+.SH SYNOPSIS
+.nf
+.B #include \(dqbignums.h\(dq
+.PP
+#define MAX_LIMBS 128
+.PP
+typedef struct {
+    uint32_t limbs[MAX_LIMBS];
+    int size;
+} BigInt;
+.PP
+typedef struct {
+    BigInt mantissa;
+    int32_t exp;
+    int sign;
+} BigFloat;
+.fi
+.SH DESCRIPTION
+BigNums stores numbers directly in fixed arrays of 32-bit limbs.
+The integer capacity and maximum float mantissa size are 4096 bits.
+The library is experimental and does not provide unbounded storage.
+.SS BigInt
+An unsigned integer has value equal to the sum of
+limbs[i] * 2^(32*i), for 0 <= i < size.
+The least significant limb comes first, independently of machine byte order.
+The size must be between 1 and MAX_LIMBS.
+In canonical form the highest active limb is nonzero, except that zero is
+represented by size 1 and limbs[0] equal to zero.
+Inactive limbs do not contribute to the value.
+.SS BigFloat
+A signed binary float has value sign * mantissa * 2^exp.
+The sign is 1 or \-1; exp counts bits, not limbs or decimal places.
+Normalized nonzero mantissas have bit 31 set in their highest active limb.
+Canonical zero has a zero mantissa, exp 0, and sign 1.
+Equivalent values can have different mantissa widths.
+.SS Ownership
+Both types contain their own storage and may be copied by structure assignment.
+They need no caller-side allocation or deallocation.
+FFT operations allocate temporary buffers internally.
+.SS Preconditions
+Use constructors before passing inputs to arithmetic routines.
+Pointers must be non-NULL and size fields must be valid.
+A distinct output generally need not be initialized.
+Only rely on input/output aliasing when the particular function documents it.
+There is no general pointer, range, or representation validation.
+.SH RETURN VALUE
+Most arithmetic routines return 0 on success and INT_MAX or \-1 on failure.
+Comparisons, bit lookup, and scalar division/modulo return values instead of
+ordinary status codes; consult their pages.
+Errors may leave partially modified outputs.
+No errno-based error reporting contract is provided.
+Include <limits.h> to use INT_MAX.
+.SH NOTES
+Only bignums.h is needed by applications using the number API.
+The FFT header has no required inclusion order.
+The clz32 and next_pow2 helpers are private implementation details and are
+not part of the installed header API.
+.SH BUGS
+The library has finite capacity, lossy float exponent alignment, incomplete
+exponent-overflow checking, and limitations in decimal float printing.
+See the individual function pages for applicable restrictions.
+.SH SEE ALSO
+.BR bigIntZero (3),
+.BR bigIntMulFFT (3),
+.BR bigFloatZero (3),
+.BR bigFloatNormalize (3),
+.BR printBigFloat (3),
+.BR bignums (7)

@@ -8,7 +8,6 @@ typedef struct {
 
 int fft(complexNum *x, int n, int inverse);
 int fft_arbitrary(complexNum *x, int n, int inverse);
-static int next_pow2(int n);
 
 #endif
 

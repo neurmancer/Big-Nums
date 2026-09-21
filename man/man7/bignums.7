@@ -1,0 +1,176 @@
+.TH BIGNUMS 7 "2026-09-21" "BigNums" "Miscellaneous Information Manual"
+.nr HY 0
+.ds AD l
+.SH NAME
+bignums \- fixed-capacity big integer and binary floating-point library
+.SH DESCRIPTION
+BigNums is a C99 library for unsigned integers and signed binary floats.
+It uses little-endian arrays of 128 32-bit limbs, FFT multiplication, and
+Newton iteration for reciprocal and square root.
+Numbers have fixed storage: at most 4096 integer or mantissa bits.
+.SH GETTING STARTED
+On Linux with an ELF toolchain and GNU Make, run ./build.sh from the repository
+root to build and install the shared library, headers, and manuals.
+The default prefix is $HOME/.local; override it with PREFIX=/usr/local when
+you have write access to that prefix.  The script calls man_setup.sh to install
+manuals under PREFIX/share/man/man3 and man7.
+Prefix-based installation does not invoke sudo.
+.PP
+For standard system-wide linking, run ./build.sh \-\-system.
+It builds first, then uses sudo unless already root to install into /usr/local.
+It registers /usr/local/lib in /etc/ld.so.conf.d/bignums.conf and runs ldconfig.
+On a standard native Linux toolchain, an application can then be compiled with:
+.PP
+.EX
+cc app.c \-lbignums \-o app
+.EE
+.PP
+System mode requires Linux/glibc and ldconfig, and accepts no path overrides.
+DESTDIR supports package staging; it is not included in runtime paths.
+.PP
+Include bignums.h and link an application against the installed library:
+.PP
+.EX
+cc app.c \e
+    \-I"$HOME/.local/include" \e
+    \-L"$HOME/.local/lib" \e
+    \-Wl,\-rpath,"$HOME/.local/lib" \e
+    \-lbignums \-o app
+.EE
+.PP
+The library filename is libbignums.so.0.1.0, with SONAME libbignums.so.0 and
+relative symlinks for the SONAME and linker name libbignums.so.
+The rpath controls runtime lookup; the linker search option alone does not.
+The shared library records its dependency on the math library.
+Applications that call math functions directly should also link with \-lm.
+.PP
+Alternatively, compile with both library sources from the bigNums directory:
+.PP
+.EX
+cc \-std=c99 \-O2 program.c bigNumLibThingy.c \e
+    smartFFTThingy.c \-lm \-o program
+.EE
+.PP
+The math library must be linked after the source/object files that use it.
+There is no required FFT-header inclusion order for applications using only
+the number API.
+.PP
+From the repository root, build and run the examples and tests with:
+.PP
+.EX
+make \-C bigNums MAIN=demo.c TARGET=demo
+\&./bigNums/demo
+make \-C bigNums MAIN=test.c TARGET=test_big
+\&./bigNums/test_big
+.EE
+.PP
+The default Make target builds only the shared library under build/lib.
+Supply MAIN to also build a custom driver.  The test and demo targets build
+executables under build that load the shared library using a relative rpath;
+the test target also runs the numerical suite.
+The numerical test executable returns nonzero if a check fails.
+.SH API GROUPS
+.TP
+.B Types and representation
+.BR bignums (3),
+.BR BigInt (3),
+.BR BigFloat (3).
+.TP
+.B Integer construction and conversion
+.BR bigIntZero (3),
+.BR int_32ToBigInt (3),
+.BR bigIntFromString (3).
+.TP
+.B Integer arithmetic
+.BR bigIntAddUInt_32 (3),
+.BR bigIntMulUInt_32 (3),
+.BR bigIntDivUInt32 (3),
+.BR bigIntModUInt32 (3),
+.BR bigIntMulFFT (3),
+.BR bigIntSub (3),
+.BR bigIntFactorial (3).
+.TP
+.B Integer comparison and bits
+.BR bigIntCmp (3),
+.BR bigIntGetBit (3),
+.BR bigIntShiftLeft (3),
+.BR bigIntShiftRight (3).
+.TP
+.B Float construction and representation
+.BR bigFloatZero (3),
+.BR bigFloatFromUint32 (3),
+.BR bigFloatCopy (3),
+.BR bigFloatNormalize (3),
+.BR bigFloatTruncate (3).
+.TP
+.B Float arithmetic and comparison
+.BR bigFloatAdd (3),
+.BR bigFloatSub (3),
+.BR bigFloatMul (3),
+.BR bigFloatDiv (3),
+.BR bigFloatReciprocal (3),
+.BR bigFloatSqrt (3),
+.BR bigFloatCmpAbs (3),
+.BR bigFloatShiftLeft (3),
+.BR bigFloatShiftRight (3).
+.TP
+.B Decimal output
+.BR printBigInt (3),
+.BR printBigFloat (3).
+.TP
+.B Underlying complex transforms
+.BR fft (3),
+.BR fft_arbitrary (3).
+.SH EXAMPLES
+Compute and print 50 factorial, then a square-root approximation:
+.PP
+.EX
+#include <stdio.h>
+#include "bignums.h"
+
+int main(void)
+{
+    BigInt factorial;
+    BigFloat two, root;
+
+    if (bigIntFactorial(&factorial, 50) != 0)
+        return 1;
+    printBigInt(&factorial);
+    putchar('\en');
+
+    bigFloatFromUint32(&two, 2);
+    if (bigFloatSqrt(&root, &two, 4) != 0)
+        return 1;
+    printBigFloat(&root, 6);
+    putchar('\en');
+    return 0;
+}
+.EE
+.SH PRECISION
+The target_limbs argument of iterative routines controls final mantissa
+storage, not a guarantee of 32 correct bits per requested limb.
+Intermediate values can overflow before truncation.
+Float addition can discard low bits during exponent alignment.
+There are no NaN or infinity representations, configurable rounding modes,
+or decimal float input routine.
+.SH BUGS
+The library remains experimental.
+Left shifts can conservatively reject fitting results.
+Some exponent and shift arithmetic is not checked for signed overflow.
+The float printer has a small fixed fractional buffer and does not propagate
+fractional rounding carry into the integer part.
+Read the function pages before using boundary-sized inputs or precision.
+.SH HISTORY
+Big nums go brrrrrrrrrrrrrr
+.PP
+I wanna start with something(after writing all the documentation)
+.PP
+To My teacher that said I can't write essays: You were wrong. anyways you may continue
+.PP
+The project began as a side quest for Tupper's self-referential formula and
+other mathematical experiments.
+.SH SEE ALSO
+.BR bignums (3),
+.BR bigIntFactorial (3),
+.BR bigFloatSqrt (3),
+.BR printBigFloat (3)
