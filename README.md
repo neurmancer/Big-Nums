@@ -1,8 +1,15 @@
-# Big-Nums
+# Big-Nums go brrrrrrrrrrrrrrrrrrrrr
 
+> Lowkey...you can keep the 'actuaL' explanation of the big nums but for me it's just a side quest...
+
+```
 An experimental C library for unsigned big integers and signed binary floats,
 with FFT multiplication and Newton reciprocal/square-root routines. Numbers use
 fixed storage: 128 32-bit limbs (4096 integer or mantissa bits).
+```
+
+
+
 
 Build and install the shared library, headers, and man pages on Linux:
 
