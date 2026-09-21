@@ -49,9 +49,9 @@ static void integers(void) {
     CHECK(bigIntFromString(&a, "12x") == -1);
     CHECK(bigIntFromString(&a, "-1") == -1);
     CHECK(bigIntFromString(&a, " 1") == -1);
-    char oversized[1301];
-    for (int i = 0; i < 1300; ++i) oversized[i] = '9';
-    oversized[1300] = '\0';
+    char oversized[MAX_LIMBS * 10 + 1];
+    for (int i = 0; i < MAX_LIMBS * 10; ++i) oversized[i] = '9';
+    oversized[MAX_LIMBS * 10] = '\0';
     CHECK(bigIntFromString(&a, oversized) == INT_MAX);
 
     int_32ToBigInt(&a, 42);
@@ -71,9 +71,9 @@ static void integers(void) {
     CHECK(bigIntShiftRight(&a, 35) == 0 && equals_u64(&a, 32));
     CHECK(bigIntShiftLeft(&a, -2) == 0 && equals_u64(&a, 8));
     CHECK(bigIntShiftRight(&a, -1) == 0 && equals_u64(&a, 16));
-    CHECK(bigIntShiftRight(&a, 4096) == 0 && equals_u64(&a, 0));
+    CHECK(bigIntShiftRight(&a, MAX_LIMBS * 32) == 0 && equals_u64(&a, 0));
     int_32ToBigInt(&a, 1);
-    CHECK(bigIntShiftLeft(&a, 4096) == INT_MAX);
+    CHECK(bigIntShiftLeft(&a, MAX_LIMBS * 32) == INT_MAX);
 
     int_32ToBigInt(&a, 100);
     int_32ToBigInt(&b, 30);

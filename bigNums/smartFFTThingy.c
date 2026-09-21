@@ -1,6 +1,8 @@
 #include "complexFFT.h"
 #include <stdlib.h>
 #include <math.h>
+#include <limits.h>
+#include <stdint.h>
 
 
 #ifndef M_PI
@@ -25,9 +27,10 @@ static void bit_reverse(complexNum *x, int n) {
 }
 
 int fft(complexNum *x, int n, int inverse) {
+    if (x == NULL || n <= 0 || (n & (n - 1)) != 0) return -1;
     bit_reverse(x, n);
 
-    for (int len = 2; len <= n; len <<= 1) {
+    for (int len = 2; len <= n;) {
         double angle = -2.0 * M_PI / len * (inverse ? -1.0 : 1.0);
         complexNum wlen = {cos(angle), sin(angle)};
 
@@ -51,6 +54,8 @@ int fft(complexNum *x, int n, int inverse) {
                 w.im = t_im;
             }
         }
+        if (len == n) break; /* Do not overflow after the final stage. */
+        len *= 2;
     }
 
     if (inverse) {
@@ -69,13 +74,16 @@ int fft(complexNum *x, int n, int inverse) {
 static int next_pow2(int n) {
     if (n <= 1) { return(1); }
     int p = 1;
-    while (p < n) p <<= 1;
+    while (p < n) {
+        if (p > INT_MAX / 2) return 0;
+        p *= 2;
+    }
     return(p);
 }
 
 // Bluestein's algorithm – works for ANY n (even prime, odd, whatever)
 int fft_arbitrary(complexNum *x, int n, int inverse) {
-    if (n <= 0) { return(-1); }
+    if (x == NULL || n <= 0 || (size_t)n > SIZE_MAX / sizeof(*x)) return -1;
 
     // Special case: already power of 2 → just call the fast one
     if ((n & (n - 1)) == 0) {
@@ -83,12 +91,14 @@ int fft_arbitrary(complexNum *x, int n, int inverse) {
     }
 
     // We need a convolution of length M >= 2n-1, M power of 2
+    if (n > INT_MAX / 2) return -1;
     int M = next_pow2(2 * n - 1);
+    if (M == 0 || (size_t)M > SIZE_MAX / sizeof(*x)) return -1;
 
     // Allocate temporary buffers
-    complexNum *a = (complexNum*)calloc(M, sizeof(complexNum));
-    complexNum *b = (complexNum*)calloc(M, sizeof(complexNum));
-    complexNum *chirp = (complexNum*)malloc(n * sizeof(complexNum));
+    complexNum *a = calloc((size_t)M, sizeof(complexNum));
+    complexNum *b = calloc((size_t)M, sizeof(complexNum));
+    complexNum *chirp = malloc((size_t)n * sizeof(complexNum));
 
     if (!a || !b || !chirp) {
         // OOM? just die gracefully or whatever, your call
@@ -99,7 +109,8 @@ int fft_arbitrary(complexNum *x, int n, int inverse) {
     double sign = inverse ? 1.0 : -1.0;   
 
     for (int k = 0; k < n; k++) {
-        double angle = sign * M_PI * (double)k * (double)k / (double)n;
+        uint64_t phase = (uint64_t)k * (uint64_t)k % ((uint64_t)n * 2);
+        double angle = sign * M_PI * (double)phase / (double)n;
         chirp[k].re = cos(angle);
         chirp[k].im = sin(angle);
     }

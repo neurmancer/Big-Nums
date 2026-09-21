@@ -19,20 +19,23 @@ writes the unsigned integer a in decimal to stdout.
 writes x with a sign if negative, an integer part, a decimal point, and
 fractional digits.  Negative decimal_places is treated as zero.
 Even zero decimal places prints a decimal point: exact 2 prints "2.".
+The float is rounded to nearest at the requested decimal place, with ties
+away from zero.  Rounding carries into the integer part when necessary.
 .PP
 Neither function modifies its input or appends a newline.
 The caller may use putchar to terminate a line.
-.SH RETURN VALUE
-These functions return no value and cannot report output or arithmetic errors.
-.SH BUGS
-The float printer has only a 22-byte fractional digit buffer.  Large
-place counts can overrun it; do not use it for arbitrary-length decimal
-output.  Modest counts such as 6 are used in the demo.
 .PP
-The routine attempts fractional rounding by adding 0.5, but prints the
-integer part first and does not carry a rounded fraction into it.
-Internal arithmetic errors are ignored; large magnitudes and scales can
-produce invalid output.  Requested decimal places do not guarantee accuracy.
+Decimal digit buffers are sized from MAX_LIMBS for both integer and
+fractional conversion.  The largest 8192-bit unsigned integer has 2467
+decimal digits and can be printed in full by printBigInt().
+.SH RETURN VALUE
+These functions return no value.  Check stdout for stream errors.
+printBigFloat() sets errno to ERANGE and writes nothing if decimal_places
+exceeds MAX_LIMBS * 10 (2560), or if the integer part requires more than
+8192 bits.  Include <errno.h> to inspect this error.
+.SH NOTES
+Formatting rounds the stored binary value exactly; it cannot restore
+precision already lost during earlier arithmetic.
 .SH SEE ALSO
 .BR bignums (3),
 .BR bignums (7)

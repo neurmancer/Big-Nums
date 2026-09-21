@@ -25,14 +25,15 @@ uses that fast path for powers of two and Bluestein convolution otherwise.
 Bluestein temporary buffers are allocated internally and freed before return.
 .SH RETURN VALUE
 .B fft()
-returns 0 for valid inputs.
+returns 0 on success or \-1 for a null pointer, nonpositive length, or a
+length that is not a power of two.
 .B fft_arbitrary()
-returns 0 on success or \-1 for a nonpositive length or allocation failure.
+returns 0 on success or \-1 for a null pointer, nonpositive length,
+unrepresentable convolution/allocation size, or allocation failure.
 .SH BUGS
-.B fft()
-does not validate its length.  Both routines assume valid pointers and array
-bounds.  Very large lengths can overflow signed size calculations; such
-lengths are unsupported.
+Both routines require the caller to provide an array containing n elements;
+they cannot validate the size of the allocation behind a non-null pointer.
+Transforms use double precision and are subject to floating-point error.
 .SH SEE ALSO
 .BR bigIntMulFFT (3),
 .BR bignums (3),

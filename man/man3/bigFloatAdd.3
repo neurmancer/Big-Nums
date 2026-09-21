@@ -18,27 +18,24 @@ bigFloatAdd, bigFloatSub, bigFloatMul \- perform signed big float arithmetic
 .fi
 .SH DESCRIPTION
 These functions store a plus b, a minus b, or a times b in result.
-Use a distinct output object; there is no general aliasing contract for all
-floating-point operations.  Inputs must be initialized; a distinct output
-need not be.
+The output may alias either input.  Inputs must be initialized; a distinct
+output need not be.  Errors leave the output unchanged.
 .PP
-Addition aligns both mantissas to the larger exponent by right-shifting the
-other mantissa.  Low bits may be discarded.  Equal signs select addition;
-different signs select magnitude comparison and unsigned subtraction.
+Addition aligns mantissas while retaining up to MAX_LIMBS * 32 significant
+bits, with guard bits and discarded-tail tracking for subtraction.
+Equal signs select addition; different signs select magnitude comparison
+and unsigned subtraction.
 Subtraction negates a copy of b and calls addition.
 .PP
-Multiplication uses FFT mantissa multiplication, combines signs and exponents,
-and normalizes the product.  It checks the exponent sum using a wider integer.
-There is no target precision argument or automatic product truncation.
+Multiplication computes an exact double-width integer product, combines
+signs and exponents, and normalizes the result.  These operations round
+toward zero only when the exact result exceeds 8192 significant binary bits.
+All exponent calculations use wider integers and check the final range.
 .SH RETURN VALUE
-Addition and subtraction return 0 on success, \-1 on a delegated shift or
-subtraction error, or INT_MAX on capacity/normalization failure.
-Multiplication returns 0 or INT_MAX; even an FFT allocation failure is mapped
-to INT_MAX.  Outputs may have been modified on failure.
+Returns 0 on success or INT_MAX if the normalized result's exponent cannot
+be represented.  Mantissa growth is handled by rounding to capacity.
 .SH BUGS
-Addition can lose low-order information when aligning exponents.
-Not all exponent arithmetic, including alignment differences and final
-normalization, is checked for signed overflow.
+Arithmetic has finite precision and uses rounding toward zero, not to nearest.
 .SH SEE ALSO
 .BR bigFloatCmpAbs (3),
 .BR bigIntMulFFT (3),

@@ -17,8 +17,7 @@ bigIntSub, bigIntCmp \- subtract or compare unsigned big integers
 compares the canonical unsigned values a and b.
 .B bigIntSub()
 stores a minus b in result, provided a is at least b.
-The destination may alias a, but must not alias a distinct b: the initial
-copy of a would overwrite b before subtraction.
+The destination may alias either input.
 .SH RETURN VALUE
 .B bigIntCmp()
 returns \-1, 0, or 1 when a is less than, equal to, or greater than b.

@@ -10,7 +10,7 @@ Build and install the shared library, headers, and man pages on Linux:
 ./build.sh
 ```
 
-For the usual system-wide `-lbignums` experience, run once:
+For the usual system-wide `-lbignums` experience, run once (tested in Basic-C-Repo works well with intellisense or the code snippet things too):
 
 ```sh
 ./build.sh --system

@@ -18,24 +18,22 @@ bigFloatReciprocal, bigFloatDiv, bigFloatSqrt \- compute a reciprocal, quotient,
 .fi
 .SH DESCRIPTION
 .B bigFloatReciprocal()
-computes 1/x using Newton iteration y = y * (2 \- x*y).
+computes 1/x using scaled integer division.
 .B bigFloatDiv()
-computes the reciprocal of b and multiplies it by a.
+computes a/b directly using scaled integer division.
 .B bigFloatSqrt()
-computes the nonnegative square root of x by iterating y = (y + x/y) / 2.
-Use a distinct result object and initialized inputs.
+computes the nonnegative square root using an integer square-root algorithm.
+Inputs must be initialized.  The output may alias either input.
 .PP
-Reciprocal and square root clamp target_limbs to 1 through MAX_LIMBS.
-They use min(target_limbs + 2, MAX_LIMBS) to choose the iteration count,
-then truncate the final result to target_limbs.
-Division limits the reciprocal only; its final product is not truncated.
+All three functions clamp target_limbs to 1 through MAX_LIMBS (256).
+Results are rounded toward zero to 32 * target_limbs significant binary bits,
+up to 8192 bits.  Exact integer intermediates avoid approximation seeds and
+intermediate mantissa overflow.  Division limits the final quotient as well.
 .SH RETURN VALUE
-Reciprocal returns 0 on success or INT_MAX for zero input or a delegated
-arithmetic failure.  Division propagates reciprocal or multiplication status.
-Square root returns \-1 for a negative sign, including signed zero, or a
-failed inner division/addition.  Positive zero succeeds.  Final normalization
-can return INT_MAX; otherwise the return value is 0.
-Do not consume the output after an error.
+Returns 0 on success or INT_MAX if the normalized result's exponent cannot
+be represented.  Reciprocal of zero and division by zero return INT_MAX.
+Square root returns \-1 for a negative sign, including signed zero.
+Positive zero succeeds.  Errors leave the output unchanged.
 .SH EXAMPLES
 .EX
 BigFloat two, root;
@@ -45,10 +43,8 @@ if (bigFloatSqrt(&root, &two, 4) != 0)
 printBigFloat(&root, 6);
 .EE
 .SH BUGS
-Target limb count limits storage, not guaranteed correct bits.
-Intermediate results are not truncated to a guard-limb budget and may overflow
-before final truncation.  Square root requests MAX_LIMBS precision for each
-inner division.  Exponent calculations are not all checked for overflow.
+Results use rounding toward zero, not rounding to nearest.
+These routines cannot recover precision already lost in their inputs.
 .SH SEE ALSO
 .BR bigFloatTruncate (3),
 .BR bigFloatMul (3),

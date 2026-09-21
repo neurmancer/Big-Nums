@@ -44,7 +44,7 @@ int main(void) {
     uint32_t remainder = bigIntDivUInt32(&result, 10);
     show_int("Product divided by 10 = ", &result);
     printf("Remainder = %" PRIu32 "\n", remainder);
-    REQUIRE(bigIntSub(&result, &b, &a)); /* Use a separate output or alias a, never b. */
+    REQUIRE(bigIntSub(&result, &b, &a)); /* Either input may also be the output. */
     show_int("12345678901234567890 - 489 = ", &result);
     printf("Compare large integer with 489: %d\n", bigIntCmp(&b, &a));
     int_32ToBigInt(&a, 1);
@@ -78,8 +78,7 @@ int main(void) {
     REQUIRE(bigFloatDiv(&z, &x, &y, 4));
     show_float("10 / 2 = ", &z);
 
-    /* Iterative routines are experimental. Report errors without printing an
-     * uninitialized result or claiming that target_limbs guarantees accuracy. */
+    /* Check the status before printing a square-root approximation. */
     int status = bigFloatSqrt(&z, &y, 4);
     if (status == 0) show_float("sqrt(2), experimental approximation = ", &z);
     else printf("sqrt(2) could not be computed (status %d)\n", status);

@@ -7,7 +7,7 @@ bignums, BigInt, BigFloat \- fixed-capacity integer and binary float types
 .nf
 .B #include \(dqbignums.h\(dq
 .PP
-#define MAX_LIMBS 128
+#define MAX_LIMBS 256
 .PP
 typedef struct {
     uint32_t limbs[MAX_LIMBS];
@@ -22,7 +22,8 @@ typedef struct {
 .fi
 .SH DESCRIPTION
 BigNums stores numbers directly in fixed arrays of 32-bit limbs.
-The integer capacity and maximum float mantissa size are 4096 bits.
+The integer capacity and maximum float mantissa size are 8192 bits
+(256 32-bit limbs).  Integers range from 0 through 2^8192 \- 1.
 The library is experimental and does not provide unbounded storage.
 .SS BigInt
 An unsigned integer has value equal to the sum of
@@ -53,16 +54,21 @@ Most arithmetic routines return 0 on success and INT_MAX or \-1 on failure.
 Comparisons, bit lookup, and scalar division/modulo return values instead of
 ordinary status codes; consult their pages.
 Errors may leave partially modified outputs.
-No errno-based error reporting contract is provided.
+The void float truncation and printing routines report range errors via errno;
+consult their pages.
 Include <limits.h> to use INT_MAX.
 .SH NOTES
 Only bignums.h is needed by applications using the number API.
 The FFT header has no required inclusion order.
 The clz32 and next_pow2 helpers are private implementation details and are
 not part of the installed header API.
+.PP
+The capacity increase from 128 to 256 limbs changes the layout of both types.
+Rebuild the library and all applications that use it with the same bignums.h;
+objects compiled with the old layout are not binary-compatible.
 .SH BUGS
-The library has finite capacity, lossy float exponent alignment, incomplete
-exponent-overflow checking, and limitations in decimal float printing.
+The library has finite capacity, float rounding toward zero, and bounded
+decimal float output.
 See the individual function pages for applicable restrictions.
 .SH SEE ALSO
 .BR bigIntZero (3),

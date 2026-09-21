@@ -61,7 +61,8 @@ man -M "$HOME/.local/share/man" 7 bignums
 
 `./build.sh` also calls `man_setup.sh` after installing the shared library and
 headers. `./build.sh --system` installs the manuals under
-`/usr/local/share/man` using sudo alongside the library and loader setup.
+`/usr/local/share/man` using sudo alongside the library(again I expect user to inspect the sudo command usage...don't trust my words) and loader setup.
+
 Without that flag, both scripts default to `$HOME/.local`; direct Make installation
 defaults to `/usr/local`. `MANDIR` defaults to `$(PREFIX)/share/man`.
 `DESTDIR` supports package staging, for example:
@@ -70,11 +71,6 @@ defaults to `/usr/local`. `MANDIR` defaults to `$(PREFIX)/share/man`.
 make -C bigNums install-man DESTDIR=/tmp/bignums-package PREFIX=/usr
 man -M /tmp/bignums-package/usr/share/man 3 bigFloatDiv
 ```
-
-Installation copies complete roff pages, requires no groff, and does
-not install the library or executables. Explicit `man -M` lookup works without
-updating the system's manual index. Update your system's index with its usual
-`mandb` procedure if you also want `apropos` searches after installation.
 
 When changing the API, edit the canonical page containing its synopsis and
 behavior. Keep aliases as relative symlinks to the canonical file in the same

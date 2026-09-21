@@ -12,11 +12,8 @@ The [Unix manual](../man/README.md) provides a `bignums(7)` overview,
 
 
 
-BigNums is an experimental C library for unsigned integers and signed binary
-floats. Storage is fixed at `MAX_LIMBS = 128` 32-bit limbs: integers can represent
-0 through 2^4096 - 1, and floats have at most 4096 mantissa bits. It is not an
-unbounded arbitrary-precision library. Current restrictions are listed
-under [Known limitations](#known-limitations).
+BigNums is a side quest had been born for specifically to fuck with Tupper's self referntial formula and Ramajuan's $\pi$ fuckery
+(does latex pi work? No fucking clue we'll see when I read the readme)
 
 ## Build and run
 
@@ -38,9 +35,8 @@ This builds first and uses sudo (unless already root) to install into
 `/usr/local`, including the headers and manuals. It writes `/usr/local/lib`
 to `/etc/ld.so.conf.d/bignums.conf` and runs `ldconfig`. On a standard native
 Linux toolchain, applications can then use `cc app.c -lbignums -o app` and
-`#include <bignums.h>`. This mode requires Linux/glibc and `ldconfig`; it accepts
-no installation overrides. Custom prefixes and `DESTDIR` remain available
-through the original `NAME=value` mode.
+`#include <bignums.h>`. This mode requires Linux/glibc and `ldconfig`(but again...**do not run sudo commands before checking the files for youselves**)
+
 
 The installed library is `libbignums.so.0.1.0`, with SONAME `libbignums.so.0`
 and relative symlinks for the SONAME and `-lbignums` linker name. The library
@@ -55,7 +51,7 @@ loader cache, managed by the administrator with `ldconfig` where applicable.
 `make -C bigNums install` installs both library and manuals, defaulting to
 `/usr/local` (the shell scripts default to `$HOME/.local`).
 
-Custom drivers remain supported:
+The OG Makefile still works tho
 
 ```sh
 make -C bigNums MAIN=demo.c TARGET=demo
@@ -64,11 +60,6 @@ make -C bigNums MAIN=test.c TARGET=test_big
 ./bigNums/test_big
 ```
 
-Supply `MAIN` to build a custom driver; without it the default target builds
-only the shared library.
-The test program reports failed checks and returns a nonzero exit status when
-any fail. See [Tests](#tests) for coverage and regression cases.
-
 To compile directly from this directory:
 
 ```sh
@@ -76,8 +67,8 @@ cc -std=c99 -Wall -Wextra -O2 demo.c bigNumLibThingy.c smartFFTThingy.c -lm -o d
 ```
 
 Application code only needs `#include "bignums.h"`. There is no FFT-header
-inclusion-order requirement. Include `<limits.h>` yourself when checking
-`INT_MAX`. Private helpers are defined only in the implementation sources.
+inclusion-order requirement.
+
 
 ## Representation and ownership
 
@@ -115,22 +106,24 @@ initialized objects and non-null pointers: the API does not validate them.
 
 Most arithmetic functions return 0 on success. Error values vary by function:
 
-- `INT_MAX`: capacity/exponent overflow in operations that check it, or a zero
+- `INT_MAX`: integer capacity or float exponent overflow, or a zero
   divisor in integer division/modulo and float reciprocal/division.
 - `-1`: invalid decimal characters, negative integer subtraction, FFT allocation
-  or transform failure, or a rejected/failed square root. Float addition and
-  subtraction can also propagate `-1`.
+  or transform failure, or a negative square-root argument.
 - Integer division and modulo return a `uint32_t` remainder, not a status. Their
   `INT_MAX` sentinel can also be a legitimate remainder for a larger divisor;
   validate the divisor before calling.
 - Comparisons return -1, 0, or +1 for less, equal, or greater. Bit lookup returns
   0 or 1. Constructors, copy, truncation, and printers return `void`.
 
-An error does not guarantee that the output is unchanged. In-place operations
-can partially mutate their operand; parsing can leave a partial result. Check
-status before consuming a result. The printers cannot report internal failures.
+Integer scalar arithmetic and parsing can leave partial results on overflow.
+Float arithmetic and shifts leave outputs unchanged on error. The void float
+truncation and printing routines set `errno = ERANGE` for unsupported exponent
+or output ranges; truncation leaves its input unchanged and printing writes
+nothing on such errors. Include `<errno.h>` and check stdout for stream errors.
 
 ## BigInt functions
+(yeah this is where I found out new markdown features)
 
 | Function | Behavior and return value |
 | --- | --- |
@@ -143,16 +136,16 @@ status before consuming a result. The printers cannot report internal failures.
 | `bigIntDivUInt32(a, divisor)` | Replaces `a` with the integer quotient and returns the remainder; zero divisor returns `INT_MAX`. |
 | `bigIntModUInt32(a, divisor)` | Returns the remainder without modifying `a`; zero divisor returns `INT_MAX`. |
 | `bigIntMulFFT(result, a, b)` | Full multiplication; returns 0, `INT_MAX` for capacity overflow, or -1 for allocation/FFT failure. Output may alias either input. |
-| `bigIntSub(result, a, b)` | Unsigned subtraction; returns -1 if `a < b`, otherwise 0. Output may alias `a`, but must not alias a distinct `b`: copying `a` into output would overwrite `b` before subtraction. |
+| `bigIntSub(result, a, b)` | Unsigned subtraction; returns -1 if `a < b`, otherwise 0. Output may alias either input. |
 | `bigIntCmp(a, b)` | Compares canonical unsigned integers; returns -1, 0, or +1. |
-| `bigIntGetBit(a, index)` | Returns the selected bit, counting from LSB 0, or 0 above the active limbs. Requires a nonnegative index. |
-| `bigIntShiftLeft(a, bits)` | In-place left shift; 0 or `INT_MAX`. Its capacity check conservatively reserves an extra limb. |
+| `bigIntGetBit(a, index)` | Returns the selected bit, counting from LSB 0, or 0 above the active limbs. Negative indices return 0. |
+| `bigIntShiftLeft(a, bits)` | In-place left shift; 0 or `INT_MAX`. Results may use all `MAX_LIMBS`; an extra limb is reserved only for a carry. |
 | `bigIntShiftRight(a, bits)` | In-place right shift, discarding low bits; returns 0 for nonnegative counts. Shifting past all active limbs yields zero. |
 | `bigIntFactorial(result, n)` | Computes unsigned `n!` using repeated scalar multiplication. Both 0! and 1! are 1. Returns 0 or `INT_MAX`. |
 
-Negative shift counts delegate to the opposite shift. Do not pass `INT_MIN`,
-whose negation is not representable as an `int`, or extreme counts that overflow
-intermediate signed arithmetic. Do not use negative bit indices.
+Negative shift counts delegate to the opposite shift. All `int` counts,
+including `INT_MIN`, are handled safely. Shifting zero always succeeds.
+
 
 ```c
 BigInt value;
@@ -170,50 +163,54 @@ if (bigIntFactorial(&value, 50) == 0) {
 | `bigFloatFromUint32(x, value)` | Initializes and normalizes an unsigned integer. |
 | `bigFloatCopy(dst, src)` | Copies the value, clearing unused destination limbs; self-copy is allowed. |
 | `bigFloatNormalize(x)` | Removes leading zero limbs, then shifts the mantissa left to set the top bit, compensating `exp`. Returns 0 or `INT_MAX`. |
-| `bigFloatTruncate(x, target_limbs)` | Discards low whole limbs and increases the exponent to compensate for their position. Clamps targets below 1 to 1. Returns void. This loses precision; it does not preserve the exact value or round to nearest. |
-| `printBigFloat(x, decimal_places)` | Prints decimal text without a newline. Negative place counts become 0. See formatting limitations below. |
+| `bigFloatTruncate(x, target_limbs)` | Discards low whole limbs and increases the exponent to compensate for their position. Clamps targets to 1 through `MAX_LIMBS`. Returns void; exponent range errors set `errno = ERANGE` and leave the input unchanged. Discarded bits are not rounded to nearest. |
+| `printBigFloat(x, decimal_places)` | Prints decimal text without a newline. Negative place counts become 0. Rounds to nearest, with ties away from zero. See output limits below. |
 | `bigFloatShiftLeft(x, bits)` | Shifts the mantissa and normalizes, multiplying the value by 2^bits on success. Returns shift/normalization status. |
 | `bigFloatShiftRight(x, bits)` | Shifts the mantissa and normalizes; low mantissa bits are discarded, so it can lose precision or become zero. Returns shift/normalization status. |
 | `bigFloatCmpAbs(a, b)` | Compares magnitudes ignoring sign; returns -1, 0, or +1. Accounts for exponent and mantissa bit length, then compares aligned bits without truncation. Equivalent representations compare equal. |
-| `bigFloatMul(result, a, b)` | Multiplies mantissas using FFT, combines signs and exponents, and normalizes. Returns 0 or `INT_MAX`, including when the underlying FFT returns -1. |
-| `bigFloatAdd(result, a, b)` | Aligns to the larger exponent by discarding low bits of the other mantissa, then adds or subtracts according to signs. Returns 0, -1, or `INT_MAX`. |
+| `bigFloatMul(result, a, b)` | Forms an exact double-width product, then rounds toward zero to 8192 significant bits. Returns 0 or `INT_MAX` for exponent range errors. |
+| `bigFloatAdd(result, a, b)` | Aligns mantissas with guard bits, adds or subtracts according to signs, and rounds toward zero to 8192 significant bits. Returns 0 or `INT_MAX` for exponent range errors. |
 | `bigFloatSub(result, a, b)` | Negates a copy of `b` and calls addition; propagates its status. |
-| `bigFloatReciprocal(result, x, target_limbs)` | Newton iteration for 1/x. Zero returns `INT_MAX`; arithmetic errors propagate. Truncates the final result. |
-| `bigFloatDiv(result, a, b, target_limbs)` | Computes a reciprocal, then multiplies by `a`; propagates status. Does **not** truncate the final product to `target_limbs`. |
-| `bigFloatSqrt(result, x, target_limbs)` | Newton iteration for sqrt(x). Negative sign returns -1 (even on signed zero); positive zero succeeds. Inner division/addition failures become -1; final normalization can return `INT_MAX`. |
+| `bigFloatReciprocal(result, x, target_limbs)` | Scaled integer division for 1/x, rounded toward zero to the requested precision. Zero or exponent range errors return `INT_MAX`. |
+| `bigFloatDiv(result, a, b, target_limbs)` | Direct scaled integer division for a/b, rounded toward zero to the requested precision. Zero divisor or exponent range errors return `INT_MAX`. |
+| `bigFloatSqrt(result, x, target_limbs)` | Integer square root with rounding toward zero to the requested precision. Negative sign returns -1 (even on signed zero); positive zero succeeds. Exponent range errors return `INT_MAX`. |
 
-Use distinct outputs in floating-point examples; there is no general documented
-aliasing contract for all float operations. Set `sign = -1` after construction
+Float arithmetic outputs may alias either input. Set `sign = -1` after construction
 to create a negative nonzero value; there is no decimal float parser.
 
-### Precision and iterative routines
+### Precision and rounding
 
-Reciprocal and square root clamp `target_limbs` to 1 through `MAX_LIMBS`.
-They calculate `working_limbs = min(target_limbs + 2, MAX_LIMBS)` and perform
-`6 + ceil(log2(working_limbs))` iterations. This working count controls iteration
-count only: intermediate values are **not** truncated to a guard-limb budget.
-Intermediate multiplication can therefore overflow before final truncation.
-Square root additionally requests `MAX_LIMBS` precision for each inner division.
+Float addition, subtraction, and multiplication round toward zero to at most
+8192 significant binary bits. Exact results that fit are preserved. Addition
+retains guard bits and tracks discarded tails so that cancellation and
+subtraction across widely separated exponents round in the correct direction.
+Multiplication uses exact double-width limb arithmetic before rounding.
 
-Reciprocal iterates `y = y * (2 - x*y)` from a signed power-of-two seed.
-Square root iterates `y = (y + x/y) / 2`, starting at the power of two given by
-flooring half the input's binary magnitude exponent. Final truncation limits
-storage, but does not establish a guarantee of 32 correct bits per requested
-limb. Exponent alignment and FFT rounding can also affect results.
+Reciprocal, division, and square root clamp `target_limbs` to 1 through
+`MAX_LIMBS`. They compute the result rounded toward zero to
+`32 * target_limbs` significant binary bits. Division uses scaled integer long
+division; square root uses an integer square-root algorithm. These operations
+use bounded wider intermediates and do not rely on approximate Newton seeds.
+Division applies the precision limit to the final quotient.
+
+Exponent arithmetic uses wider integers and checks the normalized result's
+range before storing it. A range error leaves the output unchanged. Rounding
+cannot recover precision already lost in the input values.
 
 ### Decimal printing
 
 `printBigFloat` always prints a decimal point, even for zero decimal places:
 zero with 0 places prints `0.`, and an exact integer such as 2 prints `2.`.
-The routine attempts to round the scaled fractional part by adding 0.5, but it
-prints the integer part first and does not carry a rounded fraction into it.
-It is not a reliable correctly rounded decimal formatter.
+It rounds the complete scaled value to nearest with ties away from zero,
+including a carry into the integer part. Conversion uses exact integer
+arithmetic; it does not introduce intermediate float rounding.
 
-The fractional digit buffer is only 22 bytes (21 digits plus a terminator).
-Large place counts can overrun it. Keep examples to modest counts such as 6;
-do not use this function for arbitrary-length decimal output. Internal
-arithmetic errors are ignored, so large magnitudes or scales can also produce
-invalid output. More requested decimal places do not establish more accuracy.
+`printBigInt` can print all 2467 digits of the largest 8192-bit integer.
+`printBigFloat` accepts up to `MAX_LIMBS * 10` (2560) decimal places and an
+integer part of at most 8192 bits. Larger requests set `errno = ERANGE` and
+write nothing. Negative place counts mean zero places. Tiny values, including
+those with `INT32_MIN` exponents, round safely to zero when appropriate.
+More decimal places describe the stored value; they do not improve its accuracy.
 
 ## FFT implementation
 
@@ -224,18 +221,23 @@ zero, propagates carries in base 65536, and packs pairs of digits into limbs.
 All temporary buffers are freed before return.
 
 The separate `complexFFT.h` exposes `complexNum`, `fft`, and `fft_arbitrary`.
-`fft` requires a positive power-of-two length. `fft_arbitrary` rejects
-nonpositive lengths and uses Bluestein's algorithm for non-power-of-two lengths;
-it does not simply pad the input and return a different-length transform.
-BigInt multiplication always chooses a power-of-two length, so it takes the
-radix-2 fast path. Neither FFT routine is a BigInt constructor or arithmetic API.
+`fft` requires a positive power-of-two length; `fft_arbitrary` uses Bluestein's
+algorithm for other positive lengths. Both reject null pointers and invalid
+lengths. Bluestein rejects unrepresentable convolution/allocation sizes and
+checks allocations. Chirp phases are reduced modulo a full turn before
+conversion to double, avoiding loss of accuracy from very large angles.
+Forward transforms use a negative sign; inverse transforms divide by the
+length. FFTs still use double precision and are subject to floating-point error.
 
 ## Known limitations
 
-Implementation restrictions include conservative left-shift capacity
-checks, unvalidated bit/shift arguments, incomplete exponent-overflow checking,
-and the precision/printing limitations above. The library sources are experimental and should not
-be treated as numerically validated for every supported size.
+Storage and exponent ranges remain finite. Float arithmetic rounds toward
+zero rather than to nearest; decimal printing uses ties away from zero.
+There are no NaN/infinity representations, configurable rounding modes, or
+public decimal float parser. Except for the documented FFT pointer/length
+checks, callers must provide valid pointers, array sizes, signs, and initialized
+number representations. Integer division/modulo use an ambiguous remainder
+sentinel for a zero divisor, so validate the divisor before calling.
 
 ## Tests
 

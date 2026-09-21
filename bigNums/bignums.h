@@ -3,7 +3,7 @@
 
 #include <stdint.h>       // for uint32_t, uint64_t
 
-#define MAX_LIMBS 128
+#define MAX_LIMBS 256
 
 typedef struct {
     uint32_t limbs[MAX_LIMBS];

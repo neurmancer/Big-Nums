@@ -5,9 +5,16 @@
 bignums \- fixed-capacity big integer and binary floating-point library
 .SH DESCRIPTION
 BigNums is a C99 library for unsigned integers and signed binary floats.
-It uses little-endian arrays of 128 32-bit limbs, FFT multiplication, and
-Newton iteration for reciprocal and square root.
-Numbers have fixed storage: at most 4096 integer or mantissa bits.
+It uses little-endian arrays of 256 32-bit limbs and FFT integer multiplication.
+Float operations use exact integer intermediates, scaled division, and
+integer square roots.
+Numbers have fixed storage: at most 8192 integer or mantissa bits.
+Unsigned integers range from 0 through 2^8192 \- 1.
+The BigFloat exponent remains a signed 32-bit count of binary positions.
+.PP
+The larger storage changes the layout of BigInt and BigFloat.
+Rebuild the library and its applications together when upgrading from the
+128-limb version; old compiled objects are not binary-compatible.
 .SH GETTING STARTED
 On Linux with an ELF toolchain and GNU Make, run ./build.sh from the repository
 root to build and install the shared library, headers, and manuals.
@@ -147,18 +154,17 @@ int main(void)
 }
 .EE
 .SH PRECISION
-The target_limbs argument of iterative routines controls final mantissa
-storage, not a guarantee of 32 correct bits per requested limb.
-Intermediate values can overflow before truncation.
-Float addition can discard low bits during exponent alignment.
+Float arithmetic rounds toward zero.  Addition, subtraction, and
+multiplication retain up to 8192 significant binary bits.
+Reciprocal, division, and square root round to 32 * target_limbs bits,
+with target_limbs clamped to 1 through 256.
+Exponent range errors are reported instead of overflowing signed arithmetic.
 There are no NaN or infinity representations, configurable rounding modes,
 or decimal float input routine.
 .SH BUGS
 The library remains experimental.
-Left shifts can conservatively reject fitting results.
-Some exponent and shift arithmetic is not checked for signed overflow.
-The float printer has a small fixed fractional buffer and does not propagate
-fractional rounding carry into the integer part.
+The float printer supports at most 2560 decimal places and an 8192-bit
+integer part.  Unsupported output sizes set errno to ERANGE without output.
 Read the function pages before using boundary-sized inputs or precision.
 .SH HISTORY
 Big nums go brrrrrrrrrrrrrr

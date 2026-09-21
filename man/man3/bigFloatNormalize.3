@@ -16,20 +16,19 @@ bigFloatNormalize, bigFloatTruncate \- normalize or reduce a big float mantissa
 removes leading zero limbs, then left-shifts the mantissa until the most
 significant limb has bit 31 set.  It reduces exp by the shift count to
 preserve the value.  A zero mantissa becomes canonical positive zero.
+Normalization supports mantissas using all MAX_LIMBS (256) limbs.
 .PP
 .B bigFloatTruncate()
 clamps target_limbs below 1 to 1.  If the mantissa is larger than the target,
 it discards low whole limbs, increases exp by 32 times the discarded limb
 count, and normalizes.  Otherwise it does nothing.
 Truncation loses low bits; it does not round to nearest or preserve the exact
-value.  This is a public helper, also used by iterative routines.
+value.  This is a public helper.
 .SH RETURN VALUE
-Normalization returns 0 or INT_MAX if the mantissa cannot be shifted.
-Truncation returns no value and does not report normalization failures.
-.SH BUGS
-Normalization inherits the conservative capacity check of
-.BR bigIntShiftLeft (3).
-Exponent adjustment is not checked for signed overflow.
+Normalization returns 0 or INT_MAX if the normalized exponent cannot be
+represented.  Errors leave x unchanged.
+Truncation returns no value; on exponent overflow it sets errno to ERANGE
+and leaves x unchanged.  Include <errno.h> to inspect this error.
 .SH SEE ALSO
 .BR bigFloatReciprocal (3),
 .BR bignums (3),
