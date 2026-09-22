@@ -1,4 +1,4 @@
-.TH BIGFLOATNORMALIZE 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.TH BIGFLOATNORMALIZE 3 "2026-09-22" "BigNums" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
@@ -19,7 +19,8 @@ preserve the value.  A zero mantissa becomes canonical positive zero.
 Normalization supports mantissas using all MAX_LIMBS (256) limbs.
 .PP
 .B bigFloatTruncate()
-clamps target_limbs below 1 to 1.  If the mantissa is larger than the target,
+clamps target_limbs to the range 1 through MAX_LIMBS (256).
+If the mantissa is larger than the target,
 it discards low whole limbs, increases exp by 32 times the discarded limb
 count, and normalizes.  Otherwise it does nothing.
 Truncation loses low bits; it does not round to nearest or preserve the exact
@@ -29,6 +30,8 @@ Normalization returns 0 or INT_MAX if the normalized exponent cannot be
 represented.  Errors leave x unchanged.
 Truncation returns no value; on exponent overflow it sets errno to ERANGE
 and leaves x unchanged.  Include <errno.h> to inspect this error.
+Set errno to zero before calling truncation to distinguish a new range error
+from a previously stored value; success does not clear errno.
 .SH SEE ALSO
 .BR bigFloatReciprocal (3),
 .BR bignums (3),

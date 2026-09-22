@@ -1,4 +1,4 @@
-.TH BIGNUMS 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.TH BIGNUMS 3 "2026-09-22" "BigNums" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
@@ -53,7 +53,9 @@ There is no general pointer, range, or representation validation.
 Most arithmetic routines return 0 on success and INT_MAX or \-1 on failure.
 Comparisons, bit lookup, and scalar division/modulo return values instead of
 ordinary status codes; consult their pages.
-Errors may leave partially modified outputs.
+Integer scalar arithmetic, parsing, and factorial may leave partially
+modified outputs on failure.  Float arithmetic leaves outputs unchanged
+on error; consult individual pages for other operations.
 The void float truncation and printing routines report range errors via errno;
 consult their pages.
 Include <limits.h> to use INT_MAX.
@@ -66,6 +68,7 @@ not part of the installed header API.
 The capacity increase from 128 to 256 limbs changes the layout of both types.
 Rebuild the library and all applications that use it with the same bignums.h;
 objects compiled with the old layout are not binary-compatible.
+The SONAME remains libbignums.so.0 and does not distinguish these layouts.
 .SH BUGS
 The library has finite capacity, float rounding toward zero, and bounded
 decimal float output.

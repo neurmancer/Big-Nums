@@ -1,4 +1,4 @@
-.TH BIGNUMS 7 "2026-09-21" "BigNums" "Miscellaneous Information Manual"
+.TH BIGNUMS 7 "2026-09-22" "BigNums" "Miscellaneous Information Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
@@ -15,6 +15,7 @@ The BigFloat exponent remains a signed 32-bit count of binary positions.
 The larger storage changes the layout of BigInt and BigFloat.
 Rebuild the library and its applications together when upgrading from the
 128-limb version; old compiled objects are not binary-compatible.
+The SONAME remains libbignums.so.0 and does not distinguish these layouts.
 .SH GETTING STARTED
 On Linux with an ELF toolchain and GNU Make, run ./build.sh from the repository
 root to build and install the shared library, headers, and manuals.
@@ -65,10 +66,9 @@ the number API.
 From the repository root, build and run the examples and tests with:
 .PP
 .EX
-make \-C bigNums MAIN=demo.c TARGET=demo
-\&./bigNums/demo
-make \-C bigNums MAIN=test.c TARGET=test_big
-\&./bigNums/test_big
+make \-C bigNums shared
+make \-C bigNums test demo
+\&./build/demo
 .EE
 .PP
 The default Make target builds only the shared library under build/lib.
@@ -161,18 +161,25 @@ with target_limbs clamped to 1 through 256.
 Exponent range errors are reported instead of overflowing signed arithmetic.
 There are no NaN or infinity representations, configurable rounding modes,
 or decimal float input routine.
+.SH DIAGNOSTICS
+Most arithmetic routines return 0 on success, with INT_MAX or \-1 indicating
+failure.  Comparisons, bit lookup, and scalar division and modulo return
+values instead; consult the individual function pages.
+Integer scalar arithmetic and parsing may leave partial results on failure.
+Float arithmetic leaves outputs unchanged on error.
+The void float truncation and printing routines report range errors by
+setting errno to ERANGE.
 .SH BUGS
-The library remains experimental.
+The library remains experimental and does not validate number pointers,
+size fields, or signs.  Integer FFT multiplication uses double-precision
+transforms without independent verification of the recovered product.
+The regression suite includes small-value numerical oracles and selected
+capacity and exponent boundary checks; it does not establish correctness
+across the full precision and exponent range.
 The float printer supports at most 2560 decimal places and an 8192-bit
 integer part.  Unsupported output sizes set errno to ERANGE without output.
 Read the function pages before using boundary-sized inputs or precision.
 .SH HISTORY
-Big nums go brrrrrrrrrrrrrr
-.PP
-I wanna start with something(after writing all the documentation)
-.PP
-To My teacher that said I can't write essays: You were wrong. anyways you may continue
-.PP
 The project began as a side quest for Tupper's self-referential formula and
 other mathematical experiments.
 .SH SEE ALSO

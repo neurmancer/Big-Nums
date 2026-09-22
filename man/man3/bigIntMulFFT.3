@@ -1,4 +1,4 @@
-.TH BIGINTMULFFT 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.TH BIGINTMULFFT 3 "2026-09-22" "BigNums" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
@@ -20,7 +20,12 @@ uses a power-of-two FFT convolution, rounds coefficients, propagates carries,
 and repacks the limbs.  Temporary heap buffers are freed before return.
 .SH RETURN VALUE
 Returns 0 on success, INT_MAX if the product exceeds MAX_LIMBS, or \-1 on
-allocation or FFT failure.  No caller-side deallocation is required.
+allocation or FFT failure.  Errors leave result unchanged.
+No caller-side deallocation is required.
+.SH BUGS
+The convolution uses double-precision floating-point arithmetic.
+Rounded coefficients are not independently checked against an exact product;
+a successful return does not detect numerical reconstruction errors.
 .SH SEE ALSO
 .BR bigIntMulUInt_32 (3),
 .BR fft (3),

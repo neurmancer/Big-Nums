@@ -1,8 +1,15 @@
 # BigNums Unix manual
 
 
-> Well...I am a man-pages guy so if you are one too don't bother with the DOCUMENTATION to implement shit 
-take a peek through [demo.c](/bigNums/demo.c) and then `man 3 the_fucntion_you_intend_to_use` and go feral... 
+> Well...I am a man-pages guy. If you are too, take a peek through
+> [demo.c](../bigNums/demo.c), then `man 3 the_function_you_intend_to_use`
+> and go feral. Read the return values before the return values fuck with you.
+
+Start with `bignums(7)` for building and linking, `bignums(3)` for the types,
+and the function pages for precision, aliasing, and error behavior. The current
+capacity is 256 limbs (8192 bits); float division and square root use integer
+algorithms with rounding toward zero. The roff pages keep the formal reference
+voice; the goblin commentary lives here.
 
 From the repository root, read the manual directly:
 
@@ -41,7 +48,7 @@ Render a single source directly:
 groff -man -Tutf8 man/man3/bigFloatDiv.3
 ```
 
-Check formatting and lookup with Python 3, man, groff, and col:
+Check formatting and lookup:
 
 ```sh
 make -C bigNums check-man
@@ -61,7 +68,7 @@ man -M "$HOME/.local/share/man" 7 bignums
 
 `./build.sh` also calls `man_setup.sh` after installing the shared library and
 headers. `./build.sh --system` installs the manuals under
-`/usr/local/share/man` using sudo alongside the library(again I expect user to inspect the sudo command usage...don't trust my words) and loader setup.
+`/usr/local/share/man` using sudo unless already root, alongside the library and loader setup.
 
 Without that flag, both scripts default to `$HOME/.local`; direct Make installation
 defaults to `/usr/local`. `MANDIR` defaults to `$(PREFIX)/share/man`.

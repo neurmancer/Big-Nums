@@ -1,4 +1,4 @@
-.TH BIGFLOATSHIFTLEFT 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.TH BIGFLOATSHIFTLEFT 3 "2026-09-22" "BigNums" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
@@ -25,7 +25,8 @@ Errors leave x unchanged.  Exponent adjustment is checked for overflow.
 .SH NOTES
 The count handling and capacity limits in
 .BR bigIntShiftLeft (3)
-apply.
+apply.  Left shift can fail when the shifted mantissa exceeds MAX_LIMBS,
+even when the scaled value could be represented by changing only exp.
 .SH SEE ALSO
 .BR bigFloatNormalize (3),
 .BR bigIntShiftLeft (3),
