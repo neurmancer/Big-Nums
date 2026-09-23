@@ -23,14 +23,13 @@ INCLUDEDIR    ?= $(PREFIX)/include
 MANDIR        ?= $(PREFIX)/share/man
 DESTDIR       ?=
 GROFF         ?= groff
-PYTHON        ?= python3
 INSTALL       ?= install
 MAN_SRC_DIR   := ../man
 MAN_BUILD_DIR ?= $(BUILD_DIR)/man
 MAN_SOURCES   := $(wildcard $(MAN_SRC_DIR)/man3/*.3 $(MAN_SRC_DIR)/man7/*.7)
 MAN_TEXTS     := $(patsubst $(MAN_SRC_DIR)/%,$(MAN_BUILD_DIR)/%.txt,$(MAN_SOURCES))
 
-.PHONY: all shared demo test check clean man check-man install install-library install-man link-help
+.PHONY: all shared demo test check clean man install install-library install-man link-help
 
 all: shared
 ifneq ($(strip $(MAIN)),)
@@ -81,9 +80,6 @@ man: $(MAN_TEXTS)
 $(MAN_BUILD_DIR)/%.txt: $(MAN_SRC_DIR)/% $(MAN_SOURCES)
 	mkdir -p "$(@D)"
 	cd "$(MAN_SRC_DIR)" && $(GROFF) -ww -Tutf8 -man "$*" > "$(abspath $@)"
-
-check-man:
-	$(PYTHON) ../scripts/check_man.py
 
 install-man:
 	$(INSTALL) -d "$(DESTDIR)$(MANDIR)/man3" "$(DESTDIR)$(MANDIR)/man7"

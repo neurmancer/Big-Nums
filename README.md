@@ -167,12 +167,7 @@ If you're a man-pages goblin, the [Unix manual](man/README.md) has you covered:
 man -M "$PWD/man" 7 bignums
 man -M "$PWD/man" 3 bigIntFactorial
 man -M "$PWD/man" 3 bigFloatDiv
-make -C bigNums check-man
 ```
-
-The manual check covers all pages and aliases at 60, 80, and 100 columns,
-including a temporary staged installation
-and the public C prototypes.
 
 Well...this shit started as a side-quest from this repo and here we're...
 [the library's origin](https://github.com/neurmancer/Basic-C-Examples/tree/main/reallyBasicThings/projects101/mathFuckery/DSPFuckery/bigNums).

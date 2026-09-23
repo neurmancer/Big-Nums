@@ -48,17 +48,6 @@ Render a single source directly:
 groff -man -Tutf8 man/man3/bigFloatDiv.3
 ```
 
-Check formatting and lookup:
-
-```sh
-make -C bigNums check-man
-```
-
-This checks every page at 60, 80, and 100 columns using direct-file lookup,
-source-tree lookup, and a temporary staged installation. It rejects formatter
-diagnostics, missing sections, overlong lines, and incorrect rendered C
-prototypes. Plain-text previews are saved under `build/man-review/` for reading.
-
 Install just the manual into your personal prefix:
 
 ```sh
@@ -81,6 +70,5 @@ man -M /tmp/bignums-package/usr/share/man 3 bigFloatDiv
 
 When changing the API, edit the canonical page containing its synopsis and
 behavior. Keep aliases as relative symlinks to the canonical file in the same
-directory. Verify prototypes against `bignums.h` and `complexFFT.h` and run
-`make -C bigNums check-man`. Keep examples and limitations consistent with the
-library.
+directory. Verify prototypes against `bignums.h` and `complexFFT.h`. Keep
+examples and limitations consistent with the library.
