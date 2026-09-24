@@ -1,39 +1,63 @@
 # Big-Nums go brrrrrrrrrrrrrrrrrrrrr
 
+
+> well...At this point I can put NSD tags everywhere I guess so here you go: **Neuro Software Distribution Presents...**
+
 > Lowkey...you can keep the 'actuaL' explanation of the big nums but for me it's just a side quest...
 
 An experimental C library for unsigned big integers and signed binary floats.
-The side quest now has **256 32-bit limbs: 8192 bits** per integer or float
-mantissa. Big nums, yes. Infinite nums? Fuck no, there's still an array in there.
+The side quest now has **1024 32-bit limbs: 32768 bits** per integer or float
+mantissa, about **9864 significant decimal digits** of capacity. The largest
+integer has 9865 decimal digits. Big nums, yes. Infinite nums? Fuck no, there's
+still an array in there.
 
-`BigInt` stores values from 0 through `2^8192 - 1`. `BigFloat` stores
+`BigInt` stores values from 0 through `2^32768 - 1`. `BigFloat` stores
 `sign * mantissa * 2^exp`, with a signed 32-bit binary exponent. Both types own
-their storage; use them on the stack or copy them by assignment. FFT operations
-allocate temporary buffers internally.
+their storage; use them on the stack or copy them by assignment. FFT integer
+multiplication and standalone Bluestein transforms allocate temporary buffers
+internally and free them before returning.
 
-## What actually works right now
+## What (allegedly) works right now
 
 | Area | Current implementation |
 | --- | --- |
 | Integers | Decimal parsing/printing, scalar addition and multiplication, scalar division/remainder, comparison, subtraction, bit lookup, shifts, and factorial. |
-| Full integer multiplication | FFT convolution using 16-bit digits and double-precision transforms. Output may alias either input. |
-| Signed floats | Addition, subtraction, and multiplication using wider integer intermediates, rounded toward zero to at most 8192 significant bits. |
+| Full integer multiplication | FFT convolution with 8-bit digits and exact modular verification of every coefficient. Output may alias either input. |
+| Signed floats | Addition/subtraction with guard bits; multiplication with an exact schoolbook product. Results round toward zero to at most 32768 significant bits. |
 | Reciprocal and division | Scaled integer long division, rounded toward zero to `32 * target_limbs` significant bits. |
 | Square root | Integer square-root algorithm with the same requested precision and rounding rule. |
-| Decimal float output | Exact conversion of the stored value, rounded to nearest with ties away from zero; up to 2560 decimal places. |
+| Decimal float output | Exact conversion of the stored value, rounded to nearest with ties away from zero; up to 10240 decimal places. |
 | Complex FFT API | In-place radix-2 FFT, plus Bluestein transforms for other positive lengths, exposed through `complexFFT.h`. |
 
-`target_limbs` is clamped to 1 through 256. Reciprocal, division, and square root
-no longer use Newton iteration. More requested digits do not resurrect precision
-you already threw away. Necromancy is not in the header yet.
+`target_limbs` is clamped to 1 through 1024. These are **32-bit limbs**, not
+decimal places: `target_limbs = 4` requests 128 significant binary bits.
+Reciprocal/division use integer long division; square root uses a restoring
+integer algorithm. More requested digits do not resurrect precision you already
+threw away. Necromancy is not in the header yet. A long calculation can accumulate
+rounding error even when every operation follows its rounding contract.
 
-The current regression run (2026-09-22) reports **804 checks, 0 failures**.
-It covers integer arithmetic, aliasing, capacity errors, float arithmetic and
-domain errors, and magnitude comparison across different representations and
-extreme exponents. Approximate float checks use `long double` with a tolerance
-of `1e-8 * max(1, |expected|)`; that is **not a full 8192-bit accuracy check**.
-The demo exercises both printers, but the regression suite does not assert their
-output or directly test the standalone FFT API.
+The regression run at 1024 limbs reports **26238 C checks, all passing**.
+Tests include full-capacity products, carries, and reciprocal and square-root
+bit patterns, plus independent multiplication oracles and injected FFT/allocation
+failures. They also check the standalone FFT against a direct DFT and test large
+transform round trips. AddressSanitizer, UndefinedBehaviorSanitizer, and
+LeakSanitizer runs passed. The suite does **not** check every bit of every float
+operation or assert the printers' output. Passing tests are evidence; the test
+counter is not a mathematical blessing. See the [test details](bigNums/DOCUMENTATION.md#tests).
+
+## Yes, the FFT function actually does FFT
+
+`bigIntMulFFT` splits limbs into 8-bit digits and uses up to 8192 FFT points.
+It also computes an exact modular convolution using a number-theoretic transform
+(NTT). Every rounded FFT coefficient must agree with that result; if it doesn't,
+the exact coefficients supply the product. Floating-point noise does not get to
+freestyle your integer.
+
+This verification runs on every nonzero product. It adds three modular transforms
+to the three complex transforms, keeps O(n log n) complexity, and can still be
+slower than schoolbook multiplication at these sizes. Big-O does not pay your
+constant factors. `bigFloatMul` uses its own exact schoolbook kernel; scalar
+integer multiplication and factorial also have their own paths.
 
 ## Build the thing
 
@@ -42,14 +66,20 @@ and build the demo:
 
 ```sh
 make -C bigNums shared
-make -C bigNums test demo
+make -C bigNums check demo
 ./build/demo
 ```
 
 The build needs a Linux/ELF C99-or-later toolchain, GNU Make, and the system math
-library. It produces `build/lib/libbignums.so.0.1.0` with SONAME
-`libbignums.so.0`. The test and demo executables load that library through a
-relative runtime path.
+library. It produces `build/lib/libbignums.so.1.0.0` with SONAME
+`libbignums.so.1`. `build/test_big` and `build/demo` load that library through a
+relative runtime path. The second test, `build/test_fft_multiply`, links the
+library object files directly so linker wrappers can inject failures. Running
+the tests requires a linker supporting GNU-style `--wrap`.
+
+`make -C bigNums test` and `make -C bigNums check` run the same two C suites.
+`demo` builds the example; `./build/demo` actually runs it. The build does not
+install anything until you ask for an install target or run `build.sh`.
 
 To build and install the library, both public headers, and man pages under
 `$HOME/.local` (or your `PREFIX` environment variable):
@@ -102,9 +132,13 @@ make -C bigNums MAIN=test.c TARGET=test_big
 ./bigNums/test_big
 ```
 
-**Upgrading from 128 limbs? Rebuild the library and every application using it.**
-The public struct layouts changed. The library still uses SONAME
-`libbignums.so.0`, so the loader name alone will not catch that mismatch.
+That custom `MAIN=test.c` command runs the general suite only. Use `check` for
+the FFT multiplication and failure-injection suite as well.
+
+**Upgrading from 256 limbs? Rebuild the library and every application using it.**
+The public struct layouts changed. The new SONAME is `libbignums.so.1`;
+applications built for `libbignums.so.0` must keep using their old library until
+rebuilt. Do not rename or symlink the new library to the old SONAME.
 
 ## Small example, big number
 
@@ -142,25 +176,34 @@ int main(void)
   Check the function's contract: comparisons and bit lookup return values,
   and integer division/modulo return a remainder. Their zero-divisor sentinel
   can also be a valid remainder, so check the divisor yourself.
-- Integer scalar operations and parsing can leave partial results on failure.
+- Integer scalar operations, parsing, and factorial can leave partial results on failure.
   Float arithmetic leaves its output unchanged on error. The void float
   truncation and printing functions report range errors through `errno = ERANGE`;
   clear `errno` before calling if you need to detect a new error.
 - Float shifts move the mantissa, then normalize. Right shifts can discard bits
   or produce zero; left shifts can exhaust mantissa capacity. They are not just
-  exponent edits.
-- The float printer accepts at most 2560 decimal places and an integer part of
-  at most 8192 bits. Unsupported ranges write nothing and set `errno = ERANGE`.
+  exponent edits. Negative counts reverse the direction, including its capacity
+  limits and possible bit loss.
+- The float printer accepts at most 10240 decimal places and an integer part of
+  at most 32768 bits. Unsupported ranges write nothing and set `errno = ERANGE`.
   Both printers omit the newline; float output always includes a decimal point,
-  even with zero decimal places.
+  even with zero decimal places. A negative nonzero value rounded to zero keeps
+  its minus sign. Those 10240 output places describe the stored value; they do
+  not promise 10240 accurate digits of your original calculation.
 - Initialize inputs and provide valid pointers, sizes, and signs. There is no
-  general input validation. FFT integer multiplication uses double precision
-  and does not independently verify the recovered integer product.
+  general input validation. Standalone FFT transforms use double precision;
+  integer multiplication uses FFT with exact coefficient verification in
+  O(n log n) time and up to 320 KiB of temporary heap storage. Verification adds
+  transform work. Float multiplication, division, and square root take quadratic
+  time as operand/requested precision grows. Float routines can use about
+  100 KiB of stack including callees on the tested build. See the
+  [mechanics and resource bounds](bigNums/DOCUMENTATION.md#mechanics-and-resource-bounds).
 
 ## Read the docs or go feral responsibly
 
 See the [API documentation](bigNums/DOCUMENTATION.md),
-[usage demo](bigNums/demo.c), and [numerical tests](bigNums/test.c).
+[usage demo](bigNums/demo.c), [numerical tests](bigNums/test.c), and
+[FFT multiplication tests](bigNums/test_fft_multiply.c).
 If you're a man-pages goblin, the [Unix manual](man/README.md) has you covered:
 
 ```sh

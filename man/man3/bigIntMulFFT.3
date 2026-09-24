@@ -1,8 +1,8 @@
-.TH BIGINTMULFFT 3 "2026-09-22" "BigNums" "Library Functions Manual"
+.TH BIGINTMULFFT 3 "2026-09-24" "BigNums" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
-bigIntMulFFT \- multiply two big integers using FFT convolution
+bigIntMulFFT \- multiply two big integers using verified FFT convolution
 .SH SYNOPSIS
 .nf
 .B #include \(dqbignums.h\(dq
@@ -15,17 +15,25 @@ Multiplies a by b and stores the product in result.
 The destination may be the same object as either or both inputs.
 The inputs must be initialized; a distinct destination need not be.
 .PP
-Each 32-bit limb is split into two base-65536 digits.  The implementation
-uses a power-of-two FFT convolution, rounds coefficients, propagates carries,
-and repacks the limbs.  Temporary heap buffers are freed before return.
+Each limb is split into four base-256 digits.  A power-of-two complex FFT
+convolution computes the product coefficients, using at most 8192 points.
+Every rounded coefficient is checked against an exact modular convolution
+modulo 998244353.  At 1024 limbs, every coefficient is at most 266342400,
+less than the modulus, so this verification is deterministic.
+If floating-point reconstruction fails, the exact modular coefficients are
+used instead.  Carry propagation and capacity checks precede output assignment.
+Zero products skip transforms.  Temporary heap buffers are freed before return.
 .SH RETURN VALUE
 Returns 0 on success, INT_MAX if the product exceeds MAX_LIMBS, or \-1 on
-allocation or FFT failure.  Errors leave result unchanged.
+allocation or transform failure.
+Errors leave result unchanged.
 No caller-side deallocation is required.
-.SH BUGS
-The convolution uses double-precision floating-point arithmetic.
-Rounded coefficients are not independently checked against an exact product;
-a successful return does not detect numerical reconstruction errors.
+.SH NOTES
+The running time is O(n log n), with n = a.size + b.size, including verification
+and recovery.  Temporary heap storage is at most 320 KiB at 1024 limbs.
+Verification adds three modular transforms to the three complex transforms.
+The standalone complex FFT API remains available through complexFFT.h and
+uses double precision without exact verification.
 .SH SEE ALSO
 .BR bigIntMulUInt_32 (3),
 .BR fft (3),

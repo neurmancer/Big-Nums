@@ -8,8 +8,8 @@ BUILD_DIR    ?= ../build
 LIB_BUILD_DIR = $(BUILD_DIR)/lib
 LIB_SRCS      = bigNumLibThingy.c smartFFTThingy.c
 LIB_OBJS      = $(patsubst %.c,$(BUILD_DIR)/obj/%.o,$(LIB_SRCS))
-LIB_VERSION   = 0.1.0
-LIB_SONAME    = libbignums.so.0
+LIB_VERSION   = 1.0.0
+LIB_SONAME    = libbignums.so.1
 LIB_REAL      = libbignums.so.$(LIB_VERSION)
 SHARED_LIB    = $(LIB_BUILD_DIR)/$(LIB_REAL)
 
@@ -42,9 +42,9 @@ endif
 
 shared: $(SHARED_LIB)
 
-$(SHARED_LIB): $(LIB_OBJS)
+$(SHARED_LIB): $(LIB_OBJS) Makefile
 	mkdir -p "$(LIB_BUILD_DIR)"
-	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(LIB_SONAME) -o "$@" $^ $(LDLIBS)
+	$(CC) $(LDFLAGS) -shared -Wl,-soname,$(LIB_SONAME) -o "$@" $(LIB_OBJS) $(LDLIBS)
 	ln -sfn "$(LIB_REAL)" "$(LIB_BUILD_DIR)/$(LIB_SONAME)"
 	ln -sfn "$(LIB_SONAME)" "$(LIB_BUILD_DIR)/libbignums.so"
 
@@ -60,10 +60,15 @@ $(BUILD_DIR)/test_big: test.c $(SHARED_LIB) bignums.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o "$@" "$<" \
 		-L"$(LIB_BUILD_DIR)" -Wl,-rpath,'$$ORIGIN/lib' -lbignums $(LDLIBS)
 
+$(BUILD_DIR)/test_fft_multiply: test_fft_multiply.c $(LIB_OBJS) bignums.h complexFFT.h Makefile
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o "$@" "$<" $(LIB_OBJS) \
+		-Wl,--wrap=fft,--wrap=calloc,--wrap=free $(LDLIBS)
+
 demo: $(BUILD_DIR)/demo
 
-test check: $(BUILD_DIR)/test_big
+test check: $(BUILD_DIR)/test_big $(BUILD_DIR)/test_fft_multiply
 	"$(BUILD_DIR)/test_big"
+	"$(BUILD_DIR)/test_fft_multiply"
 
 install: install-library install-man
 
@@ -93,4 +98,5 @@ link-help:
 
 clean:
 	rm -f $(LIB_OBJS) "$(SHARED_LIB)" "$(LIB_BUILD_DIR)/$(LIB_SONAME)" \
-		"$(LIB_BUILD_DIR)/libbignums.so" "$(BUILD_DIR)/demo" "$(BUILD_DIR)/test_big" $(MAN_TEXTS)
+		"$(LIB_BUILD_DIR)/libbignums.so" "$(BUILD_DIR)/demo" "$(BUILD_DIR)/test_big" \
+		"$(BUILD_DIR)/test_fft_multiply" $(MAN_TEXTS)

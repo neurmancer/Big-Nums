@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "bignums.h"
+#include "complexFFT.h"
 
 static unsigned checks, failures;
 #define CHECK(expr) do { \
@@ -102,7 +103,7 @@ static void integers(void) {
     CHECK(bigIntFactorial(&r, 0) == 0 && equals_u64(&r, 1));
     CHECK(bigIntFactorial(&r, 1) == 0 && equals_u64(&r, 1));
     CHECK(bigIntFactorial(&r, 20) == 0 && equals_u64(&r, UINT64_C(2432902008176640000)));
-    CHECK(bigIntFactorial(&r, 1000) == INT_MAX);
+    CHECK(bigIntFactorial(&r, 32 * MAX_LIMBS) == INT_MAX);
     bigIntZero(&a);
     a.size = MAX_LIMBS;
     for (int i = 0; i < MAX_LIMBS; ++i) a.limbs[i] = UINT32_MAX;
@@ -248,10 +249,114 @@ static void magnitude_comparison(void) {
     }
 }
 
+static void full_capacity(void) {
+    BigInt a, b, r;
+    bigIntZero(&a);
+    a.size = MAX_LIMBS / 2;
+    for (int i = 0; i < a.size; ++i) a.limbs[i] = UINT32_MAX;
+    CHECK(bigIntMulFFT(&r, &a, &a) == 0);
+    CHECK(r.size == MAX_LIMBS);
+    for (int i = 0; i < MAX_LIMBS; ++i) {
+        uint32_t expected = i == 0 ? 1 : i < MAX_LIMBS / 2 ? 0 :
+                            i == MAX_LIMBS / 2 ? UINT32_MAX - 1 : UINT32_MAX;
+        CHECK(r.limbs[i] == expected);
+    }
+    a.size = MAX_LIMBS;
+    for (int i = 0; i < a.size; ++i) a.limbs[i] = UINT32_MAX;
+    int_32ToBigInt(&b, 1);
+    CHECK(bigIntMulFFT(&a, &a, &b) == 0);
+    CHECK(a.size == MAX_LIMBS);
+    for (int i = 0; i < a.size; ++i) CHECK(a.limbs[i] == UINT32_MAX);
+    int_32ToBigInt(&r, 123);
+    CHECK(bigIntMulFFT(&r, &a, &a) == INT_MAX && equals_u64(&r, 123));
+    CHECK(bigIntMulFFT(&a, &a, &a) == INT_MAX);
+    for (int i = 0; i < a.size; ++i) CHECK(a.limbs[i] == UINT32_MAX);
+
+    BigFloat x, y, z;
+    bigFloatFromUint32(&x, 3);
+    CHECK(bigFloatReciprocal(&x, &x, MAX_LIMBS) == 0);
+    CHECK(x.mantissa.size == MAX_LIMBS && x.exp == -32 * MAX_LIMBS - 1);
+    for (int i = 0; i < MAX_LIMBS; ++i)
+        CHECK(x.mantissa.limbs[i] == UINT32_C(0xaaaaaaaa));
+    x.mantissa = a;
+    x.exp = 0;
+    x.sign = 1;
+    y = x;
+    CHECK(bigFloatMul(&z, &x, &y) == 0);
+    CHECK(z.mantissa.size == MAX_LIMBS && z.exp == 32 * MAX_LIMBS);
+    CHECK(z.mantissa.limbs[0] == UINT32_MAX - 1);
+    for (int i = 1; i < MAX_LIMBS; ++i)
+        CHECK(z.mantissa.limbs[i] == UINT32_MAX);
+    CHECK(bigFloatAdd(&z, &x, &y) == 0 && z.exp == 1);
+    CHECK(z.mantissa.size == MAX_LIMBS);
+    for (int i = 0; i < MAX_LIMBS; ++i)
+        CHECK(z.mantissa.limbs[i] == UINT32_MAX);
+    y.mantissa.limbs[0]--;
+    CHECK(bigFloatSub(&z, &x, &y) == 0 && float_value(&z) == 1);
+    x.exp = -32 * MAX_LIMBS;
+    CHECK(bigFloatSqrt(&x, &x, MAX_LIMBS) == 0);
+    CHECK(x.mantissa.size == MAX_LIMBS && x.exp == -32 * MAX_LIMBS);
+    for (int i = 0; i < MAX_LIMBS; ++i)
+        CHECK(x.mantissa.limbs[i] == UINT32_MAX);
+}
+
+static void transforms(void) {
+    const int lengths[] = {1, 2, 3, 5, 17, 32};
+    const long double tau = 2 * acosl(-1.0L);
+    for (unsigned t = 0; t < sizeof(lengths) / sizeof(lengths[0]); ++t) {
+        int n = lengths[t];
+        for (int inverse = 0; inverse <= 1; ++inverse) {
+            complexNum input[32], transformed[32];
+            for (int i = 0; i < n; ++i) {
+                input[i].re = (i * 7 % 11) - 5;
+                input[i].im = (i * 3 % 7) - 3;
+                transformed[i] = input[i];
+            }
+            CHECK(fft_arbitrary(transformed, n, inverse) == 0);
+            for (int k = 0; k < n; ++k) {
+                long double re = 0, im = 0;
+                for (int j = 0; j < n; ++j) {
+                    long double angle = (inverse ? tau : -tau) * j * k / n;
+                    re += input[j].re * cosl(angle) - input[j].im * sinl(angle);
+                    im += input[j].re * sinl(angle) + input[j].im * cosl(angle);
+                }
+                if (inverse) { re /= n; im /= n; }
+                CHECK(fabsl(transformed[k].re - re) < 1e-9L);
+                CHECK(fabsl(transformed[k].im - im) < 1e-9L);
+            }
+        }
+    }
+    /* Transform sizes relevant to large limb convolutions, plus Bluestein. */
+    const int large_lengths[] = {4 * MAX_LIMBS, 4 * MAX_LIMBS - 1};
+    for (unsigned t = 0; t < sizeof(large_lengths) / sizeof(large_lengths[0]); ++t) {
+        int n = large_lengths[t];
+        complexNum *x = calloc((size_t)n, sizeof(*x));
+        CHECK(x != NULL);
+        if (!x) continue;
+        for (int i = 0; i < n; ++i) x[i].re = (i * 17 % 101) - 50;
+        CHECK(fft_arbitrary(x, n, 0) == 0);
+        CHECK(fft_arbitrary(x, n, 1) == 0);
+        for (int i = 0; i < n; ++i) {
+            CHECK(fabs(x[i].re - ((i * 17 % 101) - 50)) < 1e-8);
+            CHECK(fabs(x[i].im) < 1e-8);
+        }
+        free(x);
+    }
+    complexNum x = {0, 0};
+    CHECK(fft(NULL, 1, 0) == -1);
+    CHECK(fft(&x, 0, 0) == -1);
+    CHECK(fft(&x, 3, 0) == -1);
+    CHECK(fft_arbitrary(NULL, 1, 0) == -1);
+    CHECK(fft_arbitrary(&x, -1, 0) == -1);
+    CHECK(fft_arbitrary(&x, INT_MAX, 0) == -1);
+}
+
 int main(void) {
     integers();
     floats();
     magnitude_comparison();
+    full_capacity();
+    transforms();
     printf("%u checks, %u failures\n", checks, failures);
     return failures ? EXIT_FAILURE : EXIT_SUCCESS;
 }

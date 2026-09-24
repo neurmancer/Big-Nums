@@ -1,21 +1,22 @@
-.TH BIGNUMS 7 "2026-09-22" "BigNums" "Miscellaneous Information Manual"
+.TH BIGNUMS 7 "2026-09-24" "BigNums" "Miscellaneous Information Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
 bignums \- fixed-capacity big integer and binary floating-point library
 .SH DESCRIPTION
 BigNums is a C99 library for unsigned integers and signed binary floats.
-It uses little-endian arrays of 256 32-bit limbs and FFT integer multiplication.
+It uses little-endian arrays of 1024 32-bit limbs and verified FFT integer multiplication.
 Float operations use exact integer intermediates, scaled division, and
 integer square roots.
-Numbers have fixed storage: at most 8192 integer or mantissa bits.
-Unsigned integers range from 0 through 2^8192 \- 1.
+Numbers have fixed storage: at most 32768 integer or mantissa bits.
+Unsigned integers range from 0 through 2^32768 \- 1.
 The BigFloat exponent remains a signed 32-bit count of binary positions.
 .PP
 The larger storage changes the layout of BigInt and BigFloat.
 Rebuild the library and its applications together when upgrading from the
-128-limb version; old compiled objects are not binary-compatible.
-The SONAME remains libbignums.so.0 and does not distinguish these layouts.
+256-limb version; old compiled objects are not binary-compatible.
+The SONAME changes from libbignums.so.0 to libbignums.so.1.
+Do not substitute the new library for the old SONAME.
 .SH GETTING STARTED
 On Linux with an ELF toolchain and GNU Make, run ./build.sh from the repository
 root to build and install the shared library, headers, and manuals.
@@ -46,7 +47,7 @@ cc app.c \e
     \-lbignums \-o app
 .EE
 .PP
-The library filename is libbignums.so.0.1.0, with SONAME libbignums.so.0 and
+The library filename is libbignums.so.1.0.0, with SONAME libbignums.so.1 and
 relative symlinks for the SONAME and linker name libbignums.so.
 The rpath controls runtime lookup; the linker search option alone does not.
 The shared library records its dependency on the math library.
@@ -68,6 +69,7 @@ From the repository root, build and run the examples and tests with:
 .EX
 make \-C bigNums shared
 make \-C bigNums test demo
+make \-C bigNums check
 \&./build/demo
 .EE
 .PP
@@ -76,6 +78,8 @@ Supply MAIN to also build a custom driver.  The test and demo targets build
 executables under build that load the shared library using a relative rpath;
 the test target also runs the numerical suite.
 The numerical test executable returns nonzero if a check fails.
+The check target runs the same C regression suites as test, including exact
+multiplication oracles and injected FFT/allocation failures.
 .SH API GROUPS
 .TP
 .B Types and representation
@@ -155,9 +159,9 @@ int main(void)
 .EE
 .SH PRECISION
 Float arithmetic rounds toward zero.  Addition, subtraction, and
-multiplication retain up to 8192 significant binary bits.
+multiplication retain up to 32768 significant binary bits.
 Reciprocal, division, and square root round to 32 * target_limbs bits,
-with target_limbs clamped to 1 through 256.
+with target_limbs clamped to 1 through 1024.
 Exponent range errors are reported instead of overflowing signed arithmetic.
 There are no NaN or infinity representations, configurable rounding modes,
 or decimal float input routine.
@@ -171,12 +175,18 @@ The void float truncation and printing routines report range errors by
 setting errno to ERANGE.
 .SH BUGS
 The library remains experimental and does not validate number pointers,
-size fields, or signs.  Integer FFT multiplication uses double-precision
-transforms without independent verification of the recovered product.
-The regression suite includes small-value numerical oracles and selected
-capacity and exponent boundary checks; it does not establish correctness
-across the full precision and exponent range.
-The float printer supports at most 2560 decimal places and an 8192-bit
+size fields, or signs.  Standalone FFT transforms use double precision;
+bigIntMulFFT checks every FFT coefficient with an exact modular convolution
+and recovers from floating-point reconstruction errors without quadratic work.
+The C regression suite includes full-capacity products, carries, reciprocal
+and square-root bit patterns, and standalone FFT checks.  Testing is not an
+exhaustive proof for every possible input or decimal output.
+Integer multiplication takes O(n log n) time, including exact verification,
+and uses up to 320 KiB of temporary heap storage.
+Float multiplication, division, and square root have quadratic arithmetic costs.
+Some float routines use about 100 KiB of stack including callees on the
+tested build; small thread stacks need adequate headroom.
+The float printer supports at most 10240 decimal places and a 32768-bit
 integer part.  Unsupported output sizes set errno to ERANGE without output.
 Read the function pages before using boundary-sized inputs or precision.
 .SH HISTORY

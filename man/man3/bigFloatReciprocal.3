@@ -1,4 +1,4 @@
-.TH BIGFLOATRECIPROCAL 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.TH BIGFLOATRECIPROCAL 3 "2026-09-24" "BigNums" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
@@ -25,9 +25,9 @@ computes a/b directly using scaled integer division.
 computes the nonnegative square root using an integer square-root algorithm.
 Inputs must be initialized.  The output may alias either input.
 .PP
-All three functions clamp target_limbs to 1 through MAX_LIMBS (256).
+All three functions clamp target_limbs to 1 through MAX_LIMBS (1024).
 Results are rounded toward zero to 32 * target_limbs significant binary bits,
-up to 8192 bits.  Exact integer intermediates avoid approximation seeds and
+up to 32768 bits.  Exact integer intermediates avoid approximation seeds and
 intermediate mantissa overflow.  Division limits the final quotient as well.
 .SH RETURN VALUE
 Returns 0 on success or INT_MAX if the normalized result's exponent cannot

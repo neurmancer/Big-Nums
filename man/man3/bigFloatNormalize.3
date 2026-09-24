@@ -1,4 +1,4 @@
-.TH BIGFLOATNORMALIZE 3 "2026-09-22" "BigNums" "Library Functions Manual"
+.TH BIGFLOATNORMALIZE 3 "2026-09-24" "BigNums" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
@@ -16,10 +16,10 @@ bigFloatNormalize, bigFloatTruncate \- normalize or reduce a big float mantissa
 removes leading zero limbs, then left-shifts the mantissa until the most
 significant limb has bit 31 set.  It reduces exp by the shift count to
 preserve the value.  A zero mantissa becomes canonical positive zero.
-Normalization supports mantissas using all MAX_LIMBS (256) limbs.
+Normalization supports mantissas using all MAX_LIMBS (1024) limbs.
 .PP
 .B bigFloatTruncate()
-clamps target_limbs to the range 1 through MAX_LIMBS (256).
+clamps target_limbs to the range 1 through MAX_LIMBS (1024).
 If the mantissa is larger than the target,
 it discards low whole limbs, increases exp by 32 times the discarded limb
 count, and normalizes.  Otherwise it does nothing.

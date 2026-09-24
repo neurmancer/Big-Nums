@@ -11,27 +11,6 @@ int fft_arbitrary(complexNum *x, int n, int inverse);
 
 #endif
 
-/*
-    Here is the tea...
-    
-    To multiply two big integers using FFT:
-
-    Represent each integer as a sequence of “digits” (your 32‑bit limbs).
-
-    If number A has la limbs and B has lb limbs, the convolution length is la + lb - 1.
-
-    Find the smallest power of two N >= la + lb - 1.
-
-    Allocate two arrays of N complex numbers, copy the limbs as real parts (imaginary = 0), zero the rest.
-
-    Run fft on both.
-
-    Pointwise multiply the two transforms (complex multiplication).
-
-    Inverse FFT the product.
-
-    Round the real parts to the nearest integer (they should be nearly integers).
-
-    Propagate carries (each limb is now much larger than 32 bits) to produce the final big‑int result.
-
-*/
+/* Double-precision transforms, also used by bigIntMulFFT with base-256 digits
+ * and exact modular coefficient verification. Standalone transforms remain
+ * approximate. See DOCUMENTATION.md for conventions and limits. */

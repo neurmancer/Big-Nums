@@ -4,7 +4,7 @@
 
         Important shit to know: 
         I'll be using Little-endian to store shit to make carry propagation natural
-        I'll be using my own FFT (an enhanced version that's able to handle non-power-of-two)
+        Integer products use FFT with exact coefficient verification
 
 
         Hii...I've returned back (next day and implemented big floats cuz I need them for Ramanujan fuckery)
@@ -12,12 +12,13 @@
 */
 
 #include <string.h>     //For memset
-#include <stdlib.h>     //For Dyanmic memory shit
+#include <stdlib.h>
+#include <math.h>
 #include <stdio.h>
 #include <limits.h>
 #include <errno.h>
-#include "complexFFT.h"
 #include "bignums.h"
+#include "complexFFT.h"
 
 // Each 32-bit limb needs at most 10 decimal digits, plus one terminator.
 #define DECIMAL_BUFFER_SIZE (MAX_LIMBS * 10 + 1)
@@ -197,133 +198,6 @@ int bigIntGetBit(const BigInt *a, int bit_index) {
     return (a->limbs[limb] >> bit) & 1;
 }
 
-/* smallest power of two >= n */
-static int next_pow2(int n) {
-    int p = 1;
-    while (p < n) p <<= 1;
-    return p;
-}
-
-/*
-    FFT-based multiplication: result = a * b.
-    Splits each 32-bit limb into two 16-bit digits to stay inside double precision.
-    Returns 0 on success, INT_MAX on capacity overflow, -1 on allocation/FFT failure.
-    This is my first API design duh...
-
-    DEV NOTES: FUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUCK My brain is getting squishy
-
-*/
-int bigIntMulFFT(BigInt *result, const BigInt *a, const BigInt *b) {
-    int la = a->size;
-    int lb = b->size;
-
-    /* 1. Convert each limb into TWO 16-bit digits (low, high) */
-    int digitsA = la * 2;
-    int digitsB = lb * 2;
-    int convLen = digitsA + digitsB - 1;     // linear convolution length
-    int N = next_pow2(convLen);              // still pad to power-of-2 for speed
-                                              // (fft_arbitrary will just call the fast path)
-
-    /* 2. Allocate zero-padded complex arrays */
-    complexNum *A = calloc((size_t)N, sizeof(complexNum));
-    complexNum *B = calloc((size_t)N, sizeof(complexNum));
-    if (!A || !B) {
-        free(A); free(B);
-        return(-1);
-    }
-
-    // Fill A (little-endian 16-bit digits)
-    for (int i = 0; i < la; i++) {
-        uint32_t limb = a->limbs[i];
-        A[2*i].re     = (double)(limb & 0xFFFF);
-        A[2*i + 1].re = (double)((limb >> 16) & 0xFFFF);
-    }
-    // Fill B
-    for (int i = 0; i < lb; i++) {
-        uint32_t limb = b->limbs[i];
-        B[2*i].re     = (double)(limb & 0xFFFF);
-        B[2*i + 1].re = (double)((limb >> 16) & 0xFFFF);
-    }
-
-    /* 3. Forward FFT */
-    if (fft_arbitrary(A, N, 0) != 0 || fft_arbitrary(B, N, 0) != 0) {
-        free(A); free(B);
-        return(-1);
-    }
-
-    /* 4. Pointwise multiply */
-    for (int i = 0; i < N; i++) {
-        double re = A[i].re * B[i].re - A[i].im * B[i].im;
-        double im = A[i].re * B[i].im + A[i].im * B[i].re;
-        A[i].re = re;
-        A[i].im = im;
-    }
-
-    /* 5. Inverse FFT */
-    if (fft_arbitrary(A, N, 1) != 0) {
-        free(A); free(B);
-        return(-1);
-    }
-
-    /* 6. Temp buffer for rounded convolution + carry room */
-    uint64_t *temp = calloc((size_t)convLen + 2, sizeof(uint64_t));
-    if (!temp) {
-        free(A); free(B);
-        return(-1);
-    }
-
-    /* 7. Round (numbers are positive so +0.5 is fine) */
-    for (int i = 0; i < convLen; i++) {
-        // defensive: clamp tiny negative noise from floating-point error
-        double v = A[i].re;
-        if (v < 0.0) v = 0.0;
-        temp[i] = (uint64_t)(v + 0.5);
-    }
-
-    /* 8. Carry propagation base 2^16 */
-    for (int i = 0; i < convLen + 1; i++) {
-        if (temp[i] >= 0x10000ULL) {
-            temp[i + 1] += temp[i] >> 16;
-            temp[i] &= 0xFFFFULL;
-        }
-    }
-
-    // Find highest non-zero digit
-    int lastDigit = convLen + 1;
-    while (lastDigit > 0 && temp[lastDigit - 1] == 0)
-        lastDigit--;
-
-    /* Product is zero */
-    if (lastDigit == 0) {
-        bigIntZero(result);
-        free(temp); free(A); free(B);
-        return(0);
-    }
-
-    /* 9. Pack two 16-bit digits → one 32-bit limb */
-    int outSize = (lastDigit + 1) / 2;
-    if (outSize > MAX_LIMBS) {
-        free(temp); free(A); free(B);
-        return(INT_MAX);      // overflow
-    }
-
-    memset(result->limbs, 0, sizeof(result->limbs));
-    for (int i = 0; i < lastDigit; i += 2) {
-        uint32_t low  = (uint32_t)(temp[i] & 0xFFFF);
-        uint32_t high = (i + 1 < lastDigit) ? (uint32_t)(temp[i + 1] & 0xFFFF) : 0;
-        result->limbs[i / 2] = low | (high << 16);
-    }
-
-    result->size = outSize;
-    while (result->size > 1 && result->limbs[result->size - 1] == 0)
-        result->size--;
-
-    free(temp);
-    free(A);
-    free(B);
-    return(0);
-}
-
 /* Compare a and b. Returns -1 if a < b, 0 if a == b, 1 if a > b. don't expect better API guidline than that */
 int bigIntCmp(const BigInt *a, const BigInt *b) {
     if (a->size != b->size)
@@ -454,9 +328,10 @@ int bigIntShiftRight(BigInt *a, int bits) {
 
 
 
-/* Private exact arithmetic for float intermediates. Three mantissas of storage
- * cover a double-width product/dividend and decimal scaling at 10 digits/limb.
- * Public values still contain at most MAX_LIMBS limbs. */
+/* Private exact intermediates. Products, scaled division and square root need
+ * at most 2*FLOAT_BITS bits. Decimal output needs at most FLOAT_BITS plus
+ * ceil(10*MAX_LIMBS*log2(10)) bits, less than 3*FLOAT_BITS. Two spare limbs
+ * cover carries and normalization. Public values use at most MAX_LIMBS limbs. */
 #define WIDE_LIMBS (3 * MAX_LIMBS + 2)
 #define FLOAT_BITS (32 * MAX_LIMBS)
 #define MAX_DECIMAL_PLACES (10 * MAX_LIMBS)
@@ -625,6 +500,142 @@ static void wide_mul(WideInt *out, const BigInt *a, const BigInt *b) {
     }
     out->size = a->size + b->size;
     wide_trim(out);
+}
+
+/* Base-256 convolution coefficients are at most 4*MAX_LIMBS*255^2.
+ * At 1024 limbs this is 266342400 < 998244353. Consequently one NTT
+ * determines each coefficient exactly, not merely a checksum of the product.
+ * The prime is 119*2^23+1 and 3 is a primitive root. Keep both bounds explicit
+ * so a future capacity change cannot silently invalidate certification. */
+#define MUL_NTT_PRIME UINT32_C(998244353)
+#if 4ULL * MAX_LIMBS * 255 * 255 >= 998244353ULL || \
+    8ULL * MAX_LIMBS > (1ULL << 23)
+#error "FFT multiplication needs a larger exact coefficient verification range"
+#endif
+
+static uint32_t mul_mod_power(uint32_t base, uint32_t exponent) {
+    uint32_t result = 1;
+    for (; exponent; exponent >>= 1) {
+        if (exponent & 1)
+            result = (uint32_t)((uint64_t)result * base % MUL_NTT_PRIME);
+        base = (uint32_t)((uint64_t)base * base % MUL_NTT_PRIME);
+    }
+    return result;
+}
+
+/* Private radix-2 transform, with n a power of two no greater than 2^23.
+ * All residues stay below the prime; products fit uint64_t and sums uint32_t. */
+static void mul_ntt(uint32_t *values, int n, int inverse) {
+    for (int i = 1, j = 0; i < n; ++i) {
+        int bit = n >> 1;
+        while (j & bit) { j ^= bit; bit >>= 1; }
+        j ^= bit;
+        if (i < j) {
+            uint32_t swap = values[i];
+            values[i] = values[j];
+            values[j] = swap;
+        }
+    }
+    for (int width = 2; width <= n; width *= 2) {
+        uint32_t exponent = (MUL_NTT_PRIME - 1) / (uint32_t)width;
+        if (inverse) exponent = MUL_NTT_PRIME - 1 - exponent;
+        uint32_t step = mul_mod_power(3, exponent);
+        for (int start = 0; start < n; start += width) {
+            uint32_t phase = 1;
+            for (int j = 0; j < width / 2; ++j) {
+                uint32_t even = values[start + j];
+                uint32_t odd = (uint32_t)((uint64_t)phase *
+                    values[start + j + width / 2] % MUL_NTT_PRIME);
+                uint32_t sum = even + odd;
+                values[start + j] = sum >= MUL_NTT_PRIME ? sum - MUL_NTT_PRIME : sum;
+                values[start + j + width / 2] =
+                    even >= odd ? even - odd : even + MUL_NTT_PRIME - odd;
+                phase = (uint32_t)((uint64_t)phase * step % MUL_NTT_PRIME);
+            }
+        }
+    }
+    if (inverse) {
+        uint32_t scale = mul_mod_power((uint32_t)n, MUL_NTT_PRIME - 2);
+        for (int i = 0; i < n; ++i)
+            values[i] = (uint32_t)((uint64_t)values[i] * scale % MUL_NTT_PRIME);
+    }
+}
+
+/* FFT convolution with exact coefficient certification. Recover using the NTT
+ * coefficients if floating-point reconstruction fails. Both paths have
+ * O(n log n) cost; there is no quadratic multiplication fallback. */
+int bigIntMulFFT(BigInt *result, const BigInt *a, const BigInt *b) {
+    if ((a->size == 1 && a->limbs[0] == 0) ||
+        (b->size == 1 && b->limbs[0] == 0)) {
+        bigIntZero(result);
+        return 0;
+    }
+    int digits_a = 4 * a->size, digits_b = 4 * b->size;
+    int length = digits_a + digits_b - 1, n = 1;
+    while (n < length) n *= 2;
+    complexNum *fa = calloc((size_t)n, sizeof(*fa));
+    complexNum *fb = calloc((size_t)n, sizeof(*fb));
+    uint32_t *na = calloc((size_t)n, sizeof(*na));
+    uint32_t *nb = calloc((size_t)n, sizeof(*nb));
+    int status = -1;
+    if (!fa || !fb || !na || !nb) goto done;
+    for (int i = 0; i < digits_a; ++i) {
+        uint32_t digit = (a->limbs[i / 4] >> (8 * (i % 4))) & 255u;
+        fa[i].re = digit;
+        na[i] = digit;
+    }
+    for (int i = 0; i < digits_b; ++i) {
+        uint32_t digit = (b->limbs[i / 4] >> (8 * (i % 4))) & 255u;
+        fb[i].re = digit;
+        nb[i] = digit;
+    }
+    if (fft(fa, n, 0) != 0 || fft(fb, n, 0) != 0) goto done;
+    for (int i = 0; i < n; ++i) {
+        double real = fa[i].re * fb[i].re - fa[i].im * fb[i].im;
+        double imaginary = fa[i].re * fb[i].im + fa[i].im * fb[i].re;
+        fa[i].re = real;
+        fa[i].im = imaginary;
+    }
+    if (fft(fa, n, 1) != 0) goto done;
+
+    mul_ntt(na, n, 0);
+    mul_ntt(nb, n, 0);
+    for (int i = 0; i < n; ++i)
+        na[i] = (uint32_t)((uint64_t)na[i] * nb[i] % MUL_NTT_PRIME);
+    mul_ntt(na, n, 1);
+    int verified = 1;
+    for (int i = 0; i < length; ++i) {
+        /* Compare in double before any integer cast. This rejects NaN,
+         * infinity, and out-of-range values without undefined conversion. */
+        fa[i].re = floor(fa[i].re + 0.5);
+        if (!isfinite(fa[i].re) || fa[i].re != (double)na[i]) verified = 0;
+    }
+    BigInt packed;
+    bigIntZero(&packed);
+    uint64_t carry = 0;
+    for (int i = 0; i <= length; ++i) {
+        uint32_t coefficient = i == length ? 0 :
+            verified ? (uint32_t)fa[i].re : na[i];
+        carry += coefficient;
+        uint32_t digit = (uint32_t)(carry & 255u);
+        carry >>= 8;
+        if (i / 4 >= MAX_LIMBS) {
+            if (digit != 0) { status = INT_MAX; goto done; }
+        } else {
+            packed.limbs[i / 4] |= digit << (8 * (i % 4));
+            if (digit != 0) packed.size = i / 4 + 1;
+        }
+    }
+    /* The product of digits_a and digits_b base-256 integers needs at most
+     * digits_a+digits_b digits, so the extra iteration consumes all carry. */
+    *result = packed;
+    status = 0;
+done:
+    free(fa);
+    free(fb);
+    free(na);
+    free(nb);
+    return status;
 }
 
 /* Binary long division. The remainder needs at most divisor_bits + 1 bits;

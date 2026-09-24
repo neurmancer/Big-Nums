@@ -1,4 +1,4 @@
-.TH BIGINTSHIFTLEFT 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.TH BIGINTSHIFTLEFT 3 "2026-09-24" "BigNums" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
@@ -16,7 +16,7 @@ bigIntShiftLeft, bigIntShiftRight, bigIntGetBit \- shift or inspect bits of a bi
 .SH DESCRIPTION
 The shift functions modify a in place by bits binary positions.
 Left shift multiplies by a power of two; right shift discards low bits.
-Left shift permits results occupying all MAX_LIMBS (256) limbs, reserving
+Left shift permits results occupying all MAX_LIMBS (1024) limbs, reserving
 an extra limb only when high bits actually carry into it.
 Right shifting past all active limbs produces canonical zero.
 A zero count has no effect; a negative count delegates to the opposite shift.

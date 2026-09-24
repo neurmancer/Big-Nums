@@ -3,7 +3,7 @@
 
 #include <stdint.h>       // for uint32_t, uint64_t
 
-#define MAX_LIMBS 256
+#define MAX_LIMBS 1024
 
 typedef struct {
     uint32_t limbs[MAX_LIMBS];
@@ -34,6 +34,8 @@ int bigIntFromString(BigInt *a, const char *dec_str);
 
 int bigIntGetBit(const BigInt *a, int bit_index);
 
+/* FFT multiplication with exact coefficient verification; aliases are allowed.
+ * Returns 0, INT_MAX on overflow, or -1 on allocation/transform failure. */
 int bigIntMulFFT(BigInt *result, const BigInt *a, const BigInt *b);
 
 int bigIntCmp(const BigInt *a, const BigInt *b);

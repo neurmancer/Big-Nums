@@ -1,4 +1,4 @@
-.TH BIGFLOATADD 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.TH BIGFLOATADD 3 "2026-09-24" "BigNums" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
@@ -29,7 +29,7 @@ Subtraction negates a copy of b and calls addition.
 .PP
 Multiplication computes an exact double-width integer product, combines
 signs and exponents, and normalizes the result.  These operations round
-toward zero only when the exact result exceeds 8192 significant binary bits.
+toward zero only when the exact result exceeds 32768 significant binary bits.
 All exponent calculations use wider integers and check the final range.
 .SH RETURN VALUE
 Returns 0 on success or INT_MAX if the normalized result's exponent cannot

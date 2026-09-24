@@ -6,10 +6,7 @@
 > and go feral. Read the return values before the return values fuck with you.
 
 Start with `bignums(7)` for building and linking, `bignums(3)` for the types,
-and the function pages for precision, aliasing, and error behavior. The current
-capacity is 256 limbs (8192 bits); float division and square root use integer
-algorithms with rounding toward zero. The roff pages keep the formal reference
-voice; the goblin commentary lives here.
+and the function pages for precision, aliasing, and error behavior and shit
 
 From the repository root, read the manual directly:
 
@@ -67,8 +64,3 @@ defaults to `/usr/local`. `MANDIR` defaults to `$(PREFIX)/share/man`.
 make -C bigNums install-man DESTDIR=/tmp/bignums-package PREFIX=/usr
 man -M /tmp/bignums-package/usr/share/man 3 bigFloatDiv
 ```
-
-When changing the API, edit the canonical page containing its synopsis and
-behavior. Keep aliases as relative symlinks to the canonical file in the same
-directory. Verify prototypes against `bignums.h` and `complexFFT.h`. Keep
-examples and limitations consistent with the library.
