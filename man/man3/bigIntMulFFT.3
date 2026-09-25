@@ -1,41 +1,35 @@
-.TH BIGINTMULFFT 3 "2026-09-24" "BigNums" "Library Functions Manual"
+.TH BIGINTMULFFT 3 "2026-09-25" "BigNums 3" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
-bigIntMulFFT \- multiply two big integers using verified FFT convolution
+bigIntMul, bigIntMulFFT \- multiply dynamic integers exactly
 .SH SYNOPSIS
 .nf
-.B #include \(dqbignums.h\(dq
-.sp
-.BI "int bigIntMulFFT(BigInt *" "result" ", const BigInt *" "a" ","
-.BI "    const BigInt *" "b" ");"
+#include <bignums.h>
+
+int bigIntMul(BigInt *result, const BigInt *a, const BigInt *b);
+int bigIntMulFFT(BigInt *result, const BigInt *a, const BigInt *b);
 .fi
 .SH DESCRIPTION
-Multiplies a by b and stores the product in result.
-The destination may be the same object as either or both inputs.
-The inputs must be initialized; a distinct destination need not be.
+Both functions multiply signed values, applying the product of operand signs.
+Zero results are canonical positive zero; transforms operate on magnitudes.
 .PP
-Each limb is split into four base-256 digits.  A power-of-two complex FFT
-convolution computes the product coefficients, using at most 8192 points.
-Every rounded coefficient is checked against an exact modular convolution
-modulo 998244353.  At 1024 limbs, every coefficient is at most 266342400,
-less than the modulus, so this verification is deterministic.
-If floating-point reconstruction fails, the exact modular coefficients are
-used instead.  Carry propagation and capacity checks precede output assignment.
-Zero products skip transforms.  Temporary heap buffers are freed before return.
+Mul selects schoolbook when either input has fewer than 32 limbs; otherwise
+it requests verified FFT. MulFFT uses base-256 complex convolution with exact
+coefficient verification modulo 998244353 where its bounds hold.
+.PP
+Runtime checks require 4 * min(a.size,b.size) * 255^2 below the modulus and a
+padded transform length at most 2^23. A shorter operand of at most 3837 limbs
+satisfies the uniform coefficient bound; 3838 does not. Outside either bound,
+multiplication uses an exact schoolbook fallback.
+.PP
+Incorrect or non-finite FFT coefficients recover from the NTT coefficients.
+Supported transforms take O(n log n) time and O(n) scratch; the fallback is
+quadratic. Output may alias either or both inputs. All objects must be
+initialized. Products are published only after success.
 .SH RETURN VALUE
-Returns 0 on success, INT_MAX if the product exceeds MAX_LIMBS, or \-1 on
-allocation or transform failure.
-Errors leave result unchanged.
-No caller-side deallocation is required.
-.SH NOTES
-The running time is O(n log n), with n = a.size + b.size, including verification
-and recovery.  Temporary heap storage is at most 320 KiB at 1024 limbs.
-Verification adds three modular transforms to the three complex transforms.
-The standalone complex FFT API remains available through complexFFT.h and
-uses double precision without exact verification.
+Returns 0, -1 for allocation/transform failure, or INT_MAX for an unrepresentable
+size. Errors leave output unchanged. Temporary allocations are released.
 .SH SEE ALSO
-.BR bigIntMulUInt_32 (3),
-.BR fft (3),
 .BR bignums (3),
 .BR bignums (7)

@@ -1,53 +1,31 @@
-.TH BIGFLOATRECIPROCAL 3 "2026-09-24" "BigNums" "Library Functions Manual"
+.TH BIGFLOATRECIPROCAL 3 "2026-09-25" "BigNums 3" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
-bigFloatReciprocal, bigFloatDiv, bigFloatSqrt \- compute a reciprocal, quotient, or square root
+bigFloatReciprocal, bigFloatDiv, bigFloatSqrt \- compute a reciprocal, quotient or square root
 .SH SYNOPSIS
 .nf
-.B #include \(dqbignums.h\(dq
-.sp
-.BI "int bigFloatReciprocal(BigFloat *" "result" ","
-.BI "    const BigFloat *" "x" ", int " "target_limbs" ");"
-.sp
-.BI "int bigFloatDiv(BigFloat *" "result" ", const BigFloat *" "a" ","
-.BI "    const BigFloat *" "b" ", int " "target_limbs" ");"
-.sp
-.BI "int bigFloatSqrt(BigFloat *" "result" ", const BigFloat *" "x" ","
-.BI "    int " "target_limbs" ");"
+#include <bignums.h>
+
+int bigFloatReciprocal(BigFloat *result, const BigFloat *x, size_t limbs);
+int bigFloatDiv(BigFloat *result, const BigFloat *a, const BigFloat *b, size_t limbs);
+int bigFloatSqrt(BigFloat *result, const BigFloat *x, size_t limbs);
 .fi
 .SH DESCRIPTION
-.B bigFloatReciprocal()
-computes 1/x using scaled integer division.
-.B bigFloatDiv()
-computes a/b directly using scaled integer division.
-.B bigFloatSqrt()
-computes the nonnegative square root using an integer square-root algorithm.
-Inputs must be initialized.  The output may alias either input.
+These operations use an explicit positive size_t limb precision and store
+that precision in the destination on success. One limb means 32 significant
+binary bits. There is no fixed maximum precision setting.
 .PP
-All three functions clamp target_limbs to 1 through MAX_LIMBS (1024).
-Results are rounded toward zero to 32 * target_limbs significant binary bits,
-up to 32768 bits.  Exact integer intermediates avoid approximation seeds and
-intermediate mantissa overflow.  Division limits the final quotient as well.
+Reciprocal computes one divided by x. Div computes a divided by b with scaled
+exact integer long division. Sqrt uses a restoring integer square-root
+algorithm. All round toward zero. Dynamic scratch is reserved before bit loops.
+Output may alias either or both inputs. Inputs and output must be initialized.
+Increasing requested precision cannot restore information lost from inputs.
 .SH RETURN VALUE
-Returns 0 on success or INT_MAX if the normalized result's exponent cannot
-be represented.  Reciprocal of zero and division by zero return INT_MAX.
-Square root returns \-1 for a negative sign, including signed zero.
-Positive zero succeeds.  Errors leave the output unchanged.
-.SH EXAMPLES
-.EX
-BigFloat two, root;
-bigFloatFromUint32(&two, 2);
-if (bigFloatSqrt(&root, &two, 4) != 0)
-    return 1;
-printBigFloat(&root, 6);
-.EE
-.SH BUGS
-Results use rounding toward zero, not rounding to nearest.
-These routines cannot recover precision already lost in their inputs.
+Returns 0, -1 for allocation failure, INT_MAX for unrepresentable size/exponent,
+or -2 for zero precision, a zero divisor, or a negative square-root sign
+(including signed zero). Positive zero succeeds. Value and precision are
+unchanged on error.
 .SH SEE ALSO
-.BR bigFloatTruncate (3),
-.BR bigFloatMul (3),
-.BR printBigFloat (3),
 .BR bignums (3),
 .BR bignums (7)

@@ -1,43 +1,32 @@
-.TH BIGINTADDUINT_32 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.TH BIGINTADDUINT_32 3 "2026-09-25" "BigNums 3" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
-bigIntAddUInt_32, bigIntMulUInt_32, bigIntDivUInt32, bigIntModUInt32 \- perform scalar arithmetic on a big integer
+bigIntAddUInt_32, bigIntMulUInt_32, bigIntDivUInt32, bigIntModUInt32 \- perform scalar integer arithmetic
 .SH SYNOPSIS
 .nf
-.B #include \(dqbignums.h\(dq
-.sp
-.BI "int bigIntAddUInt_32(BigInt *" "a" ", uint32_t " "b" ");"
-.sp
-.BI "int bigIntMulUInt_32(BigInt *" "a" ", uint32_t " "b" ");"
-.sp
-.BI "uint32_t bigIntDivUInt32(BigInt *" "a" ","
-.BI "    uint32_t " "divisor" ");"
-.sp
-.BI "uint32_t bigIntModUInt32(const BigInt *" "a" ","
-.BI "    uint32_t " "divisor" ");"
+#include <bignums.h>
+
+int bigIntAddUInt_32(BigInt *a, uint32_t b);
+int bigIntMulUInt_32(BigInt *a, uint32_t b);
+int64_t bigIntDivUInt32(BigInt *a, uint32_t divisor);
+int64_t bigIntModUInt32(const BigInt *a, uint32_t divisor);
 .fi
 .SH DESCRIPTION
-.B bigIntAddUInt_32()
-adds b to a in place, extending the active limbs when needed.
-Inactive limbs are ignored.
-.B bigIntMulUInt_32()
-multiplies a by b in place.  Multiplication by zero produces canonical zero.
-.PP
-.B bigIntDivUInt32()
-replaces a with the quotient of a divided by divisor, discarding the fraction,
-and returns the remainder.
-.B bigIntModUInt32()
-returns the same remainder without changing a.
-A zero divisor leaves a unchanged.
+Addition and multiplication grow storage as needed, reserving before mutation.
+The BigInt operand is signed; the uint32_t scalar remains nonnegative.
+Addition can cross zero. Nonzero scalar multiplication preserves the input sign.
+Multiplication by zero produces canonical zero and retains capacity.
+Division truncates toward zero and returns a remainder with the dividend's sign.
+For positive divisor d, a = q*d + r and |r| < d. For example, -7 divided by 3
+produces quotient -2 and remainder -1.
+Modulo returns a remainder without modifying the input.
+A zero divisor leaves the input unchanged.
 .SH RETURN VALUE
-Addition and multiplication return 0 on success or INT_MAX on capacity
-overflow.  On overflow, a may already have been modified.
-.PP
-Division and modulo return a uint32_t remainder; they return INT_MAX when
-divisor is zero.  Validate divisor before calling: INT_MAX can also be a
-valid remainder when divisor is greater than INT_MAX.
+Addition and multiplication return 0, -1 for allocation failure, or INT_MAX
+for an unrepresentable size. Errors leave the value unchanged.
+Division and modulo return int64_t remainders. A zero divisor returns INT64_MIN,
+which is outside the valid remainder range, without changing the input.
 .SH SEE ALSO
-.BR bigIntMulFFT (3),
 .BR bignums (3),
 .BR bignums (7)

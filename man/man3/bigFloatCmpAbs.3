@@ -1,27 +1,21 @@
-.TH BIGFLOATCMPABS 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.TH BIGFLOATCMPABS 3 "2026-09-25" "BigNums 3" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
-bigFloatCmpAbs \- compare big float magnitudes exactly
+bigFloatCmpAbs \- compare float magnitudes exactly
 .SH SYNOPSIS
 .nf
-.B #include \(dqbignums.h\(dq
-.sp
-.BI "int bigFloatCmpAbs(const BigFloat *" "a" ","
-.BI "    const BigFloat *" "b" ");"
+#include <bignums.h>
+
+int bigFloatCmpAbs(const BigFloat *a, const BigFloat *b);
 .fi
 .SH DESCRIPTION
-Compares the absolute values of a and b, ignoring their signs.
-Zero is less than every nonzero magnitude.
-The comparison accounts for the exponent and mantissa bit length, then
-compares aligned bits without shifting or truncating the inputs.
-Equivalent values with different mantissa widths compare equal.
-Normalized and unnormalized mantissas are supported; the size fields must
-still be within the valid storage bounds.
+Compares absolute values using exponent, bit length and aligned bits without
+allocating or truncating. Zero is smaller than every nonzero magnitude.
+Equivalent values with different mantissa widths compare equal. Inputs require
+canonical integer mantissas; the highest limb need not have bit 31 set.
 .SH RETURN VALUE
-Returns \-1, 0, or 1 when the magnitude of a is less than, equal to, or
-greater than that of b.  These values are comparison results, not errors.
+Returns -1, 0 or +1 as a comparison value, not an error status.
 .SH SEE ALSO
-.BR bigFloatAdd (3),
 .BR bignums (3),
 .BR bignums (7)

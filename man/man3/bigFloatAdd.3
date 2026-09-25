@@ -1,44 +1,29 @@
-.TH BIGFLOATADD 3 "2026-09-24" "BigNums" "Library Functions Manual"
+.TH BIGFLOATADD 3 "2026-09-25" "BigNums 3" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
-bigFloatAdd, bigFloatSub, bigFloatMul \- perform signed big float arithmetic
+bigFloatAdd, bigFloatSub, bigFloatMul \- perform signed float arithmetic
 .SH SYNOPSIS
 .nf
-.B #include \(dqbignums.h\(dq
-.sp
-.BI "int bigFloatAdd(BigFloat *" "result" ", const BigFloat *" "a" ","
-.BI "    const BigFloat *" "b" ");"
-.sp
-.BI "int bigFloatSub(BigFloat *" "result" ", const BigFloat *" "a" ","
-.BI "    const BigFloat *" "b" ");"
-.sp
-.BI "int bigFloatMul(BigFloat *" "result" ", const BigFloat *" "a" ","
-.BI "    const BigFloat *" "b" ");"
+#include <bignums.h>
+
+int bigFloatAdd(BigFloat *result, const BigFloat *a, const BigFloat *b);
+int bigFloatSub(BigFloat *result, const BigFloat *a, const BigFloat *b);
+int bigFloatMul(BigFloat *result, const BigFloat *a, const BigFloat *b);
 .fi
 .SH DESCRIPTION
-These functions store a plus b, a minus b, or a times b in result.
-The output may alias either input.  Inputs must be initialized; a distinct
-output need not be.  Errors leave the output unchanged.
+Computes a plus b, a minus b, or a times b. Output may alias either input.
+Every object including the destination must be initialized.
+Operations round toward zero at the destination's precision, including aliases.
 .PP
-Addition aligns mantissas while retaining up to MAX_LIMBS * 32 significant
-bits, with guard bits and discarded-tail tracking for subtraction.
-Equal signs select addition; different signs select magnitude comparison
-and unsigned subtraction.
-Subtraction negates a copy of b and calls addition.
-.PP
-Multiplication computes an exact double-width integer product, combines
-signs and exponents, and normalizes the result.  These operations round
-toward zero only when the exact result exceeds 32768 significant binary bits.
-All exponent calculations use wider integers and check the final range.
+Addition retains guard bits and discarded-tail information. Working precision
+covers both input widths and output precision to preserve cancellation with
+mixed precisions while bounding alignment for distant exponents.
+Multiplication forms an exact dynamic integer product before rounding.
+Exponent arithmetic is checked before publishing.
 .SH RETURN VALUE
-Returns 0 on success or INT_MAX if the normalized result's exponent cannot
-be represented.  Mantissa growth is handled by rounding to capacity.
-.SH BUGS
-Arithmetic has finite precision and uses rounding toward zero, not to nearest.
+Returns 0, -1 for allocation/transform failure, INT_MAX for unrepresentable
+size/exponent, or -2 for invalid precision. Output is unchanged on error.
 .SH SEE ALSO
-.BR bigFloatCmpAbs (3),
-.BR bigIntMulFFT (3),
-.BR bigFloatTruncate (3),
 .BR bignums (3),
 .BR bignums (7)

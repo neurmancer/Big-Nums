@@ -1,34 +1,34 @@
-.TH BIGFLOATZERO 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.TH BIGFLOATZERO 3 "2026-09-25" "BigNums 3" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
-bigFloatZero, bigFloatFromUint32, bigFloatCopy \- initialize or copy a binary big float
+bigFloatInit, bigFloatDestroy, bigFloatZero, bigFloatCopy, bigFloatSwap, bigFloatFromUint32 \- manage dynamic binary floats
 .SH SYNOPSIS
 .nf
-.B #include \(dqbignums.h\(dq
-.sp
-.BI "void bigFloatZero(BigFloat *" "x" ");"
-.sp
-.BI "void bigFloatFromUint32(BigFloat *" "x" ", uint32_t " "v" ");"
-.sp
-.BI "void bigFloatCopy(BigFloat *" "dst" ","
-.BI "    const BigFloat *" "src" ");"
+#include <bignums.h>
+
+void bigFloatInit(BigFloat *x);
+void bigFloatDestroy(BigFloat *x);
+void bigFloatZero(BigFloat *x);
+int bigFloatCopy(BigFloat *dst, const BigFloat *src);
+void bigFloatSwap(BigFloat *a, BigFloat *b);
+int bigFloatFromUint32(BigFloat *x, uint32_t v);
 .fi
 .SH DESCRIPTION
-.B bigFloatZero()
-sets x to canonical positive zero: mantissa zero, exp zero, and sign 1.
-.B bigFloatFromUint32()
-sets x to v and normalizes its mantissa.
-These constructors do not require an initialized destination.
+Init creates a fresh allocation-free positive zero with default precision
+1024 limbs. BIGFLOAT_INIT is equivalent. Destroy frees the mantissa and restores
+that initial state. Zero retains capacity and precision while setting positive
+zero. Never initialize a live allocation again without destroying it.
 .PP
-.B bigFloatCopy()
-copies the initialized value src to dst and clears unused destination limbs.
-Self-copy is supported.  No memory allocation is needed.
-To construct a negative nonzero value, initialize from its magnitude, then
-set its sign field to \-1.
+Copy deep-copies value, sign, exponent and precision into an initialized
+destination. Self-copy is supported. Swap exchanges ownership and metadata.
+FromUint32 sets and normalizes a scalar using the existing precision.
+Structure assignment is not a deep copy. Destroy every initialized object
+when finished, including on error paths.
 .SH RETURN VALUE
-These functions return no value.
+Init, Destroy, Zero and Swap return void. Copy and FromUint32 return 0,
+-1 for allocation failure, INT_MAX for size/exponent range failure, or -2 for
+an invalid zero precision. Errors leave the destination unchanged.
 .SH SEE ALSO
-.BR bigFloatNormalize (3),
 .BR bignums (3),
 .BR bignums (7)

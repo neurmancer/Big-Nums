@@ -1,36 +1,29 @@
-.TH BIGINTSHIFTLEFT 3 "2026-09-24" "BigNums" "Library Functions Manual"
+.TH BIGINTSHIFTLEFT 3 "2026-09-25" "BigNums 3" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
-bigIntShiftLeft, bigIntShiftRight, bigIntGetBit \- shift or inspect bits of a big integer
+bigIntShiftLeft, bigIntShiftRight, bigIntGetBit \- shift or inspect integer bits
 .SH SYNOPSIS
 .nf
-.B #include \(dqbignums.h\(dq
-.sp
-.BI "int bigIntShiftLeft(BigInt *" "a" ", int " "bits" ");"
-.sp
-.BI "int bigIntShiftRight(BigInt *" "a" ", int " "bits" ");"
-.sp
-.BI "int bigIntGetBit(const BigInt *" "a" ", int " "bit_index" ");"
+#include <bignums.h>
+
+int bigIntShiftLeft(BigInt *a, int64_t bits);
+int bigIntShiftRight(BigInt *a, int64_t bits);
+int bigIntGetBit(const BigInt *a, size_t bit_index);
 .fi
 .SH DESCRIPTION
-The shift functions modify a in place by bits binary positions.
-Left shift multiplies by a power of two; right shift discards low bits.
-Left shift permits results occupying all MAX_LIMBS (1024) limbs, reserving
-an extra limb only when high bits actually carry into it.
-Right shifting past all active limbs produces canonical zero.
-A zero count has no effect; a negative count delegates to the opposite shift.
-All int counts, including INT_MIN, are handled without signed overflow.
-Shifting zero in either direction always succeeds and leaves canonical zero.
-.PP
-.B bigIntGetBit()
-returns the bit at bit_index, counting from zero at the least significant bit.
-Negative indices and indices beyond the active limbs return zero.
+Shifts use int64_t counts. Negative counts reverse direction, including
+INT64_MIN without signed-negation overflow. Left shift grows storage exactly;
+right shift discards low magnitude bits and truncates toward zero. For example,
+-7 shifted right one bit gives -3, not -4. Nonzero results preserve the sign;
+shifting beyond all bits to the right yields canonical positive zero.
+Shifting zero allocates nothing. A zero count has no effect.
+GetBit uses a size_t index from the least significant magnitude bit; indices
+beyond the magnitude return zero. This is not a two's-complement representation.
+There is no signed-negative index interface.
 .SH RETURN VALUE
-Left shift returns 0 or INT_MAX for capacity overflow.
-Right shift returns 0 for nonnegative counts; negative counts can return
-the delegated left-shift error.
-Bit lookup returns 0 or 1.
+Shifts return 0, -1 for allocation failure or INT_MAX for an unrepresentable
+size. Errors leave the value unchanged. GetBit returns 0 or 1.
 .SH SEE ALSO
 .BR bignums (3),
 .BR bignums (7)

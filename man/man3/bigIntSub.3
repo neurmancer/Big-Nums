@@ -1,30 +1,26 @@
-.TH BIGINTSUB 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.TH BIGINTSUB 3 "2026-09-25" "BigNums 3" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
-bigIntSub, bigIntCmp \- subtract or compare unsigned big integers
+bigIntAdd, bigIntSub, bigIntCmp, bigIntCmpAbs \- add, subtract or compare signed integers
 .SH SYNOPSIS
 .nf
-.B #include \(dqbignums.h\(dq
-.sp
-.BI "int bigIntSub(BigInt *" "result" ", const BigInt *" "a" ","
-.BI "    const BigInt *" "b" ");"
-.sp
-.BI "int bigIntCmp(const BigInt *" "a" ", const BigInt *" "b" ");"
+#include <bignums.h>
+
+int bigIntSub(BigInt *result, const BigInt *a, const BigInt *b);
+int bigIntAdd(BigInt *result, const BigInt *a, const BigInt *b);
+int bigIntCmp(const BigInt *a, const BigInt *b);
+int bigIntCmpAbs(const BigInt *a, const BigInt *b);
 .fi
 .SH DESCRIPTION
-.B bigIntCmp()
-compares the canonical unsigned values a and b.
-.B bigIntSub()
-stores a minus b in result, provided a is at least b.
-The destination may alias either input.
+Add stores a plus b and Sub stores a minus b, for any combination of signs.
+Negative results are supported; zero is always positive. The output may alias
+either or both inputs and must be initialized.
+Cmp compares signed values; CmpAbs compares magnitudes ignoring sign.
 .SH RETURN VALUE
-.B bigIntCmp()
-returns \-1, 0, or 1 when a is less than, equal to, or greater than b.
-.B bigIntSub()
-returns 0 on success or \-1 when a is less than b.
-In the latter case result is not modified.
+Add and Sub return 0, -1 for allocation failure, or INT_MAX
+for an unrepresentable size. Errors leave output unchanged.
+Cmp and CmpAbs return -1, 0 or +1 as comparison values.
 .SH SEE ALSO
-.BR bigIntAddUInt_32 (3),
 .BR bignums (3),
 .BR bignums (7)

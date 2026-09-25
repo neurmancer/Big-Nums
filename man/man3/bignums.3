@@ -1,84 +1,63 @@
-.TH BIGNUMS 3 "2026-09-24" "BigNums" "Library Functions Manual"
+.TH BIGNUMS 3 "2026-09-25" "BigNums 3" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
-bignums, BigInt, BigFloat \- fixed-capacity integer and binary float types
+bignums, BigInt, BigFloat \- dynamically allocated integer and float types
 .SH SYNOPSIS
 .nf
-.B #include \(dqbignums.h\(dq
-.PP
-#define MAX_LIMBS 1024
-.PP
+#include <bignums.h>
+
 typedef struct {
-    uint32_t limbs[MAX_LIMBS];
-    int size;
+    uint32_t *limbs;
+    size_t size;
+    size_t capacity;
+    int sign;
 } BigInt;
-.PP
+
 typedef struct {
     BigInt mantissa;
     int32_t exp;
     int sign;
+    size_t precision;
 } BigFloat;
+
+BigInt integer = BIGINT_INIT;
+BigFloat floating = BIGFLOAT_INIT;
 .fi
 .SH DESCRIPTION
-BigNums stores numbers directly in fixed arrays of 32-bit limbs.
-The integer capacity and maximum float mantissa size are 32768 bits
-(1024 32-bit limbs).  Integers range from 0 through 2^32768 \- 1.
-The library is experimental and does not provide unbounded storage.
-.SS BigInt
-An unsigned integer has value equal to the sum of
-limbs[i] * 2^(32*i), for 0 <= i < size.
-The least significant limb comes first, independently of machine byte order.
-The size must be between 1 and MAX_LIMBS.
-In canonical form the highest active limb is nonzero, except that zero is
-represented by size 1 and limbs[0] equal to zero.
-Inactive limbs do not contribute to the value.
-.SS BigFloat
-A signed binary float has value sign * mantissa * 2^exp.
-The sign is 1 or \-1; exp counts bits, not limbs or decimal places.
-Normalized nonzero mantissas have bit 31 set in their highest active limb.
-Canonical zero has a zero mantissa, exp 0, and sign 1.
-Equivalent values can have different mantissa widths.
-.SS Ownership
-Both types contain their own storage and may be copied by structure assignment.
-They need no caller-side allocation or deallocation.
-FFT integer multiplication and non-power-of-two standalone FFT operations
-allocate temporary buffers internally and free them before returning.
-.SS Preconditions
-Use constructors before passing inputs to arithmetic routines.
-Pointers must be non-NULL and size fields must be valid.
-A distinct output generally need not be initialized.
-Only rely on input/output aliasing when the particular function documents it.
-There is no general pointer, range, or representation validation.
-.SH RETURN VALUE
-Most arithmetic routines return 0 on success and INT_MAX or \-1 on failure.
-Comparisons, bit lookup, and scalar division/modulo return values instead of
-ordinary status codes; consult their pages.
-Integer scalar arithmetic, parsing, and factorial may leave partially
-modified outputs on failure.  Float arithmetic leaves outputs unchanged
-on error; consult individual pages for other operations.
-The void float truncation and printing routines report range errors via errno;
-consult their pages.
-Include <limits.h> to use INT_MAX.
-.SH NOTES
-Only bignums.h is needed by applications using the number API.
-The FFT header has no required inclusion order.
-The clz32 and next_pow2 helpers are private implementation details and are
-not part of the installed header API.
-.PP
-The capacity increase from 256 to 1024 limbs changes the layout of both types.
-Rebuild the library and all applications that use it with the same bignums.h;
-objects compiled with the old layout are not binary-compatible.
-The new SONAME libbignums.so.1 distinguishes this layout from libbignums.so.0.
-Do not substitute the new library for the old SONAME.
-.SH BUGS
-The library has finite capacity, float rounding toward zero, and bounded
-decimal float output.
-See the individual function pages for applicable restrictions.
+Integer limbs are little-endian base 2^32 magnitude digits. The integer value
+is sign times the magnitude, with sign +1 or -1. Zero has size zero and sign +1;
+nonzero values have a nonzero highest active limb. Maintain size <= capacity.
+Inactive limbs are unspecified. There is no fixed limb-count limit.
+Float values are sign * mantissa * 2^exp with sign +1 or -1 and signed
+32-bit exponent. Float precision is a positive significant-limb count,
+independent of capacity; default precision is 1024 limbs. Float mantissas must
+remain nonnegative (mantissa.sign == +1); the outer sign carries the float sign.
+.SH OWNERSHIP
+Initialize every input and destination before use. Each object owns its heap
+storage. Copy deep-copies a value and can fail. Swap exchanges ownership.
+Zero retains capacity (and float precision); Destroy releases storage.
+Do not use structure assignment or memcpy to copy owning objects.
+Do not reinitialize live objects without first destroying them.
+.SH PRECONDITIONS
+Callers must provide valid pointers, initialized objects and canonical mantissas.
+Direct limb writes require sufficient reserved capacity and initialized active
+limbs. Distinct objects must not share ownership of a limb allocation.
+.SH ERRORS
+Status operations return 0, -1 for allocation/transform failure, INT_MAX for
+size/exponent range, -2 for domain/input errors, or -3 for stream errors.
+Numeric outputs remain unchanged on failure. Comparisons, bits and scalar
+division/remainders have value-returning contracts; consult their pages.
+Scalar integer division truncates toward zero and returns an int64_t remainder
+with the dividend's sign, or INT64_MIN on a zero divisor without modification.
+.SH ABI
+This is ABI 3, SONAME libbignums.so.3. Rebuild and migrate ABI 1 or ABI 2 callers.
+The object layout, zero representation, ownership rules, count types and several
+return signatures changed. Never substitute this library under an older SONAME.
+ABI 3 adds BigInt.sign (also changing BigFloat layout), permits negative integer
+results, and changes scalar remainder types and the zero-divisor sentinel.
 .SH SEE ALSO
-.BR bigIntZero (3),
-.BR bigIntMulFFT (3),
-.BR bigFloatZero (3),
-.BR bigFloatNormalize (3),
-.BR printBigFloat (3),
+.BR bigIntInit (3),
+.BR bigFloatInit (3),
+.BR bigFloatSetPrecision (3),
 .BR bignums (7)

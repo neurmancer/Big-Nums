@@ -1,43 +1,46 @@
-.TH BIGINTZERO 3 "2026-09-21" "BigNums" "Library Functions Manual"
+.TH BIGINTZERO 3 "2026-09-25" "BigNums 3" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
-bigIntZero, int_32ToBigInt, bigIntFromString \- initialize an unsigned big integer
+bigIntInit, bigIntDestroy, bigIntZero, bigIntReserve, bigIntCopy, bigIntSwap, bigIntNegate, int_32ToBigInt, bigIntFromInt64, bigIntFromString \- manage dynamically allocated signed integers
 .SH SYNOPSIS
 .nf
-.B #include \(dqbignums.h\(dq
-.sp
-.BI "void bigIntZero(BigInt *" "a" ");"
-.sp
-.BI "void int_32ToBigInt(BigInt *" "a" ", uint32_t " "val" ");"
-.sp
-.BI "int bigIntFromString(BigInt *" "a" ", const char *" "dec_str" ");"
+#include <bignums.h>
+
+void bigIntInit(BigInt *a);
+void bigIntDestroy(BigInt *a);
+void bigIntZero(BigInt *a);
+int bigIntReserve(BigInt *a, size_t limbs);
+int bigIntCopy(BigInt *dst, const BigInt *src);
+void bigIntSwap(BigInt *a, BigInt *b);
+int int_32ToBigInt(BigInt *a, uint32_t val);
+int bigIntFromInt64(BigInt *a, int64_t val);
+void bigIntNegate(BigInt *a);
+int bigIntFromString(BigInt *a, const char *text);
 .fi
 .SH DESCRIPTION
-.B bigIntZero()
-clears all limbs of a and sets its size to 1, representing zero.
-.B int_32ToBigInt()
-initializes a from val, clearing unused limbs.
-Neither function requires a previously initialized destination.
+Init initializes a fresh allocation-free zero. BIGINT_INIT is the equivalent
+static initializer. Destroy releases storage and restores the initial state;
+repeated destruction is safe. Zero sets size to zero and sign to +1,
+retaining capacity. Negate changes a nonzero value's sign without allocation;
+zero stays positive.
+Never call Init on a live allocation without destroying it first.
 .PP
-.B bigIntFromString()
-initializes a to zero, then parses the NUL-terminated decimal string dec_str.
-Only ASCII digits 0 through 9 are accepted; signs, whitespace, and separators
-are rejected.  Leading zeros are accepted.  An empty string produces zero.
-The string pointer must not be NULL.
+Reserve ensures capacity for at least the requested limb count. It grows
+geometrically and leaves new inactive limbs uninitialized. Copy deep-copies
+the value into an initialized destination; self-copy is supported. Swap
+exchanges ownership without allocating. Structure assignment is not a value copy.
+.PP
+int_32ToBigInt sets an unsigned scalar. FromInt64 sets a signed scalar,
+including INT64_MIN without intermediate signed overflow.
+FromString accepts ASCII decimal digits with one optional leading + or -.
+Empty text is zero; negative zero is canonicalized to positive zero.
+A lone sign, spaces, separators and NULL text are invalid.
+Parsing is transactional and leaves the previous value unchanged on error.
 .SH RETURN VALUE
-The first two functions return no value.
-.B bigIntFromString()
-returns 0 on success, \-1 for a non-digit character, or INT_MAX if capacity
-is exceeded.  An error can leave a partial result in a.
-.SH EXAMPLES
-.EX
-BigInt n;
-if (bigIntFromString(&n, "4294967296") != 0)
-    return 1;
-printBigInt(&n);
-.EE
+Init, Destroy, Zero, Negate and Swap return void. Other functions return 0 on success,
+-1 on allocation failure, INT_MAX on an unrepresentable size, or -2 for invalid
+decimal input. Errors leave the destination unchanged.
 .SH SEE ALSO
-.BR printBigInt (3),
 .BR bignums (3),
 .BR bignums (7)

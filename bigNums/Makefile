@@ -6,10 +6,10 @@ LDLIBS   ?= -lm
 
 BUILD_DIR    ?= ../build
 LIB_BUILD_DIR = $(BUILD_DIR)/lib
-LIB_SRCS      = bigNumLibThingy.c smartFFTThingy.c
+LIB_SRCS      = bigNumLibThingy.c multiply.c bigFloat.c conversion.c smartFFTThingy.c
 LIB_OBJS      = $(patsubst %.c,$(BUILD_DIR)/obj/%.o,$(LIB_SRCS))
-LIB_VERSION   = 1.0.0
-LIB_SONAME    = libbignums.so.1
+LIB_VERSION   = 3.0.0
+LIB_SONAME    = libbignums.so.3
 LIB_REAL      = libbignums.so.$(LIB_VERSION)
 SHARED_LIB    = $(LIB_BUILD_DIR)/$(LIB_REAL)
 
@@ -48,7 +48,7 @@ $(SHARED_LIB): $(LIB_OBJS) Makefile
 	ln -sfn "$(LIB_REAL)" "$(LIB_BUILD_DIR)/$(LIB_SONAME)"
 	ln -sfn "$(LIB_SONAME)" "$(LIB_BUILD_DIR)/libbignums.so"
 
-$(BUILD_DIR)/obj/%.o: %.c bignums.h complexFFT.h
+$(BUILD_DIR)/obj/%.o: %.c bignums.h bignums_internal.h complexFFT.h
 	mkdir -p "$(@D)"
 	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -c "$<" -o "$@"
 
@@ -62,7 +62,7 @@ $(BUILD_DIR)/test_big: test.c $(SHARED_LIB) bignums.h
 
 $(BUILD_DIR)/test_fft_multiply: test_fft_multiply.c $(LIB_OBJS) bignums.h complexFFT.h Makefile
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o "$@" "$<" $(LIB_OBJS) \
-		-Wl,--wrap=fft,--wrap=calloc,--wrap=free $(LDLIBS)
+		-Wl,--wrap=fft,--wrap=malloc,--wrap=calloc,--wrap=realloc,--wrap=free $(LDLIBS)
 
 demo: $(BUILD_DIR)/demo
 

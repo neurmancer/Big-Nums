@@ -8,6 +8,12 @@
 Start with `bignums(7)` for building and linking, `bignums(3)` for the types,
 and the function pages for precision, aliasing, and error behavior and shit
 
+The manuals describe ABI 3: dynamically allocated signed integers, explicit
+object lifetimes, and float precision independent of capacity. New entry points
+include `bigIntFromInt64`, `bigIntNegate`, `bigIntAdd`, and `bigIntCmpAbs`.
+Scalar division/modulo now return signed `int64_t` remainders; see their pages
+for truncation toward zero and the `INT64_MIN` zero-divisor sentinel.
+
 From the repository root, read the manual directly:
 
 ```sh

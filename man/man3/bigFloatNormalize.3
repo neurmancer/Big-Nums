@@ -1,38 +1,30 @@
-.TH BIGFLOATNORMALIZE 3 "2026-09-24" "BigNums" "Library Functions Manual"
+.TH BIGFLOATNORMALIZE 3 "2026-09-25" "BigNums 3" "Library Functions Manual"
 .nr HY 0
 .ds AD l
 .SH NAME
-bigFloatNormalize, bigFloatTruncate \- normalize or reduce a big float mantissa
+bigFloatNormalize, bigFloatSetPrecision, bigFloatTruncate \- normalize or configure float precision
 .SH SYNOPSIS
 .nf
-.B #include \(dqbignums.h\(dq
-.sp
-.BI "int bigFloatNormalize(BigFloat *" "x" ");"
-.sp
-.BI "void bigFloatTruncate(BigFloat *" "x" ", int " "target_limbs" ");"
+#include <bignums.h>
+
+int bigFloatNormalize(BigFloat *x);
+int bigFloatSetPrecision(BigFloat *x, size_t limbs);
+int bigFloatTruncate(BigFloat *x, size_t limbs);
 .fi
 .SH DESCRIPTION
-.B bigFloatNormalize()
-removes leading zero limbs, then left-shifts the mantissa until the most
-significant limb has bit 31 set.  It reduces exp by the shift count to
-preserve the value.  A zero mantissa becomes canonical positive zero.
-Normalization supports mantissas using all MAX_LIMBS (1024) limbs.
+Precision counts significant 32-bit limbs independently of storage capacity.
+SetPrecision requires a positive size_t count, rounds toward zero if reducing
+precision, normalizes the mantissa, and stores the policy on success.
+Increasing precision preserves the stored value without restoring lost bits.
+Truncate is an alias of SetPrecision and also changes the precision policy.
 .PP
-.B bigFloatTruncate()
-clamps target_limbs to the range 1 through MAX_LIMBS (1024).
-If the mantissa is larger than the target,
-it discards low whole limbs, increases exp by 32 times the discarded limb
-count, and normalizes.  Otherwise it does nothing.
-Truncation loses low bits; it does not round to nearest or preserve the exact
-value.  This is a public helper.
+Normalize uses the current precision. A normalized nonzero mantissa has its
+highest limb's bit 31 set; exp compensates for the shift. Zero is positive
+with exponent zero. Final exponent range is checked before publishing.
 .SH RETURN VALUE
-Normalization returns 0 or INT_MAX if the normalized exponent cannot be
-represented.  Errors leave x unchanged.
-Truncation returns no value; on exponent overflow it sets errno to ERANGE
-and leaves x unchanged.  Include <errno.h> to inspect this error.
-Set errno to zero before calling truncation to distinguish a new range error
-from a previously stored value; success does not clear errno.
+Returns 0, -1 for allocation failure, INT_MAX for an unrepresentable size or
+exponent, or -2 for zero precision. Value and precision remain unchanged on
+error. Truncate now returns status rather than setting errno.
 .SH SEE ALSO
-.BR bigFloatReciprocal (3),
 .BR bignums (3),
 .BR bignums (7)
